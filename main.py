@@ -9,6 +9,7 @@ from admin import setup_admin
 from users.routes import router as users_router
 from auth import router as auth_router
 from fund import router as fund_router
+from feedback.routes import router as feedback_router
 
 settings = get_settings()
 
@@ -44,6 +45,7 @@ admin = setup_admin(app, engine)
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(fund_router, prefix=settings.API_V1_STR)
+app.include_router(feedback_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():

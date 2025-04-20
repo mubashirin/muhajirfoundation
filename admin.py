@@ -1,6 +1,7 @@
 from sqladmin import ModelView, Admin
 from users.models import User
 from fund.models import FundInfo, SocialLink, BankDetail
+from feedback.models import Feedback
 
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.email, User.is_superuser, User.is_active, User.created_at]
@@ -98,6 +99,26 @@ class BankDetailAdmin(ModelView, model=BankDetail):
     def __str__(self):
         return f"{self.bank_name} ({self.currency})"
 
+class FeedbackAdmin(ModelView, model=Feedback):
+    column_list = [
+        Feedback.id,
+        Feedback.name,
+        Feedback.email,
+        Feedback.message,
+        Feedback.is_read,
+        Feedback.created_at
+    ]
+    column_searchable_list = [Feedback.name, Feedback.email]
+    column_sortable_list = [Feedback.id, Feedback.created_at]
+    column_default_sort = ("created_at", True)
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+    name = "Feedback"
+    name_plural = "Feedback"
+    icon = "fa-solid fa-message"
+
 def setup_admin(app, engine):
     admin = Admin(app, engine)
     
@@ -105,5 +126,6 @@ def setup_admin(app, engine):
     admin.add_view(FundInfoAdmin)
     admin.add_view(SocialLinkAdmin)
     admin.add_view(BankDetailAdmin)
+    admin.add_view(FeedbackAdmin)
     
     return admin 

@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     CORS_METHODS: list[str]
     CORS_HEADERS: list[str]
 
+    # Email settings
+    MAIL_USERNAME: str = "your-email@gmail.com"
+    MAIL_PASSWORD: str = "your-app-password"
+    MAIL_FROM: str = "your-email@gmail.com"
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp.gmail.com"
+
     @property
     def get_database_url(self) -> str:
         if self.SQLALCHEMY_DATABASE_URI:
@@ -85,4 +92,10 @@ def get_settings() -> Settings:
         CORS_ORIGINS=yaml_config["cors"]["origins"],
         CORS_METHODS=yaml_config["cors"]["methods"],
         CORS_HEADERS=yaml_config["cors"]["headers"],
+        
+        MAIL_USERNAME=yaml_config["email"]["username"],
+        MAIL_PASSWORD=yaml_config["email"]["password"],
+        MAIL_FROM=yaml_config["email"]["from"],
+        MAIL_PORT=yaml_config["email"]["port"],
+        MAIL_SERVER=yaml_config["email"]["server"]
     ) 
