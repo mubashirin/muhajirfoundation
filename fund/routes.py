@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.orm import Session
 
@@ -49,4 +49,56 @@ def update_fund_info(
     updated_info = crud.update_fund_info(db, fund_info=fund_info)
     if not updated_info:
         raise HTTPException(status_code=404, detail="Fund info not found")
-    return updated_info 
+    return updated_info
+
+# Social Links
+@router.post("/social-links", response_model=schemas.SocialLink)
+def create_social_link(
+    social_link: schemas.SocialLinkCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Security(get_admin_user)]
+):
+    return crud.create_social_link(db=db, social_link=social_link)
+
+@router.get("/social-links/{fund_id}", response_model=List[schemas.SocialLink])
+def read_social_links(
+    fund_id: int,
+    db: Annotated[Session, Depends(get_db)]
+):
+    return crud.get_social_links(db=db, fund_id=fund_id)
+
+@router.delete("/social-links/{social_link_id}")
+def delete_social_link(
+    social_link_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Security(get_admin_user)]
+):
+    if not crud.delete_social_link(db=db, social_link_id=social_link_id):
+        raise HTTPException(status_code=404, detail="Social link not found")
+    return {"message": "Social link deleted successfully"}
+
+# Bank Details
+@router.post("/bank-details", response_model=schemas.BankDetail)
+def create_bank_detail(
+    bank_detail: schemas.BankDetailCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Security(get_admin_user)]
+):
+    return crud.create_bank_detail(db=db, bank_detail=bank_detail)
+
+@router.get("/bank-details/{fund_id}", response_model=List[schemas.BankDetail])
+def read_bank_details(
+    fund_id: int,
+    db: Annotated[Session, Depends(get_db)]
+):
+    return crud.get_bank_details(db=db, fund_id=fund_id)
+
+@router.delete("/bank-details/{bank_detail_id}")
+def delete_bank_detail(
+    bank_detail_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Security(get_admin_user)]
+):
+    if not crud.delete_bank_detail(db=db, bank_detail_id=bank_detail_id):
+        raise HTTPException(status_code=404, detail="Bank detail not found")
+    return {"message": "Bank detail deleted successfully"} 
