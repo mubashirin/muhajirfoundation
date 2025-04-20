@@ -9,8 +9,8 @@ database:
   host: "localhost"
   port: 5432
   name: "muhajir_foundation"
-  user: "postgres"
-  password: "postgres"
+  user: "coder"
+  password: "Halil4983301..!"
   pool_size: 5
   max_overflow: 10
 
@@ -35,4 +35,4 @@ cors:
     - "DELETE"
   headers:
     - "Content-Type"
-    - "Authorization" 
+    - "Authorization"
