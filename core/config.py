@@ -2,34 +2,37 @@ import yaml
 from pathlib import Path
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from typing import List
+import os
 
 
 class Settings(BaseSettings):
     # App
-    PROJECT_NAME: str
-    VERSION: str
+    PROJECT_NAME: str = "Muhajir Foundation API"
+    VERSION: str = "1.0.0"
+    DESCRIPTION: str = "API для Muhajir Foundation"
     DEBUG: bool
-    API_V1_STR: str
+    API_V1_STR: str = "/api/v1"
     
     # Security
-    SECRET_KEY: str
-    ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # Database
-    POSTGRES_SERVER: str
+    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
     POSTGRES_PORT: int
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
-    SQLALCHEMY_DATABASE_URI: str | None = None
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "muhajirfoundation")
+    SQLALCHEMY_DATABASE_URI: str = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}/{POSTGRES_DB}"
     POOL_SIZE: int
     MAX_OVERFLOW: int
 
     # Logging
-    LOG_LEVEL: str
-    LOG_FORMAT: str
-    LOG_FILE: str
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    LOG_FILE: str = "app.log"
 
     # CORS
     CORS_ORIGINS: list[str]
