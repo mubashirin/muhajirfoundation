@@ -1,4 +1,5 @@
 from sqladmin import ModelView, Admin
+from sqladmin.authentication import AuthenticationBackend
 from fastapi import Request
 from users.models import User
 from fund.models import FundInfo, SocialLink, BankDetail
@@ -8,6 +9,44 @@ from core.database import SessionLocal
 from users.crud import get_user_by_email
 from core.security import verify_password
 from sqlalchemy.orm import joinedload
+import secrets
+
+SECRET_KEY = secrets.token_urlsafe(32)
+
+class AdminAuth(AuthenticationBackend):
+    async def login(self, request: Request) -> bool:
+        form = await request.form()
+        username, password = form["username"], form["password"]
+        
+        print(f"Login attempt: {username}")
+        
+        db = SessionLocal()
+        try:
+            user = get_user_by_email(db, email=username)
+            
+            if not user or not verify_password(password, user.hashed_password) or not user.is_superuser:
+                print(f"Login failed for {username}")
+                return False
+                
+            request.session.update({"authenticated": True, "user_id": user.id})
+            print(f"Login successful for {username}")
+            return True
+        finally:
+            db.close()
+
+    async def logout(self, request: Request) -> bool:
+        print("Logout called")
+        request.session.clear()
+        return True
+
+    async def authenticate(self, request: Request) -> bool:
+        authenticated = request.session.get("authenticated", False)
+        
+        print(f"Authentication check: {authenticated}")
+        
+        if not authenticated:
+            return False
+        return True
 
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.email, User.is_superuser, User.is_active, User.created_at]
@@ -192,7 +231,17 @@ class WalletAdmin(ModelView, model=Wallet):
     }
 
 def setup_admin(app, engine):
-    admin = Admin(app, engine, title="Muhajir Foundation Admin", logo_url="https://preview.tabler.io/static/logo.svg")
+    from starlette.middleware.sessions import SessionMiddleware
+    app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+    authentication_backend = AdminAuth(secret_key=SECRET_KEY)
+
+    admin = Admin(
+        app,
+        engine,
+        title="Muhajir Foundation Admin",
+        logo_url="https://preview.tabler.io/static/logo.svg",
+        authentication_backend=authentication_backend
+    )
     
     admin.add_view(UserAdmin)
     admin.add_view(FundInfoAdmin)
