@@ -2,14 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from pathlib import Path
-
 from core.config import get_settings
 from core.database import engine, Base
-from admin import setup_admin
 from users.routes import router as users_router
 from fund.routes import router as fund_router
 from feedback.routes import router as feedback_router
 from donations.routes import router as donations_router
+from admin import init_admin_routes
 
 settings = get_settings()
 
@@ -45,8 +44,8 @@ app.include_router(fund_router, prefix=settings.API_V1_STR)
 app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(donations_router, prefix=settings.API_V1_STR)
 
-# Настройка админки
-admin = setup_admin(app, engine)
+# Инициализация админ-роутов
+init_admin_routes(app)
 
 @app.get("/")
 async def root():

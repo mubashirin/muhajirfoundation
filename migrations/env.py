@@ -1,6 +1,3 @@
-import os
-import sys
-from pathlib import Path
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -8,15 +5,13 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Добавляем корневую директорию проекта в PYTHONPATH
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from core.config import get_settings
+from config import DATABASE_URL
 from core.database import Base
-from users.models import User
-
-settings = get_settings()
+import users.models
+import fund.models
+import feedback.models
+import donations.models
+import publications.models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -49,7 +44,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = settings.get_database_url
+    url = DATABASE_URL
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -69,7 +64,7 @@ def run_migrations_online() -> None:
 
     """
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = settings.get_database_url
+    configuration["sqlalchemy.url"] = DATABASE_URL
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

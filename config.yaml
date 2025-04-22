@@ -15,7 +15,7 @@ database:
   max_overflow: 10
 
 security:
-  secret_key: "your-secret-key-here"
+  secret_key: "71c9b85af2b1c45a11d84b1164596617c96af2cba08d2c0df769ed76b2fad72d"
   algorithm: "HS256"
   access_token_expire_minutes: 30
 

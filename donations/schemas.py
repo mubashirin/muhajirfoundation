@@ -1,6 +1,7 @@
 from pydantic import BaseModel, UUID4
 from typing import Optional, List
 from datetime import datetime
+from decimal import Decimal
 
 class WalletBase(BaseModel):
     name: str
@@ -28,6 +29,7 @@ class Wallet(WalletBase):
 class DonationCampaignBase(BaseModel):
     title: str
     description: Optional[str] = None
+    target_amount: Decimal = 0
     is_active: bool = True
 
 class DonationCampaignCreate(DonationCampaignBase):
