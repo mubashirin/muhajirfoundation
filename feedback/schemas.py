@@ -11,7 +11,10 @@ class FeedbackCreate(FeedbackBase):
     pass
 
 class FeedbackUpdate(BaseModel):
-    is_read: Optional[bool] = None
+    is_read: bool
+
+    class Config:
+        from_attributes = True
 
 class Feedback(FeedbackBase):
     id: int
@@ -21,3 +24,6 @@ class Feedback(FeedbackBase):
 
     class Config:
         from_attributes = True
+
+class FeedbackRead(Feedback):
+    pass

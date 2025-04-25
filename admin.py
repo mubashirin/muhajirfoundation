@@ -6,6 +6,7 @@ from core.database import get_db
 from users.models import User
 from fund.models import FundInfo, SocialLink, BankDetail
 from feedback.models import Feedback
+from feedback import schemas
 from donations.models import DonationCampaign, Wallet
 from publications.models import Publication
 from publications.schemas import PublicationCreate, PublicationUpdate
@@ -16,6 +17,8 @@ from core.config import get_settings
 from pydantic import BaseModel, UUID4
 from decimal import Decimal
 from auth.router import router as auth_router
+from feedback import crud
+from feedback.schemas import FeedbackCreate, FeedbackUpdate, FeedbackRead
 
 settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
@@ -149,24 +152,24 @@ def init_admin_routes(app: FastAPI):
     app.include_router(auth_router, prefix=settings.API_V1_STR)
 
     # Users
-    @app.get("/admin/api/users")
+    @app.get("/admin/api/users", tags=["admin"])
     async def get_users_list(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         users = db.query(User).all()
         return [{"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser} for user in users]
 
-    @app.get("/admin/users", response_model=List[dict])
+    @app.get("/admin/users", response_model=List[dict], tags=["admin"])
     async def get_users(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         users = db.query(User).all()
         return [{"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser} for user in users]
 
-    @app.get("/admin/users/{user_id}", response_model=dict)
+    @app.get("/admin/users/{user_id}", response_model=dict, tags=["admin"])
     async def get_user(user_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         return {"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser}
 
-    @app.post("/admin/api/users")
+    @app.post("/admin/api/users", tags=["admin"])
     async def create_user(
         user_data: UserCreate,
         current_admin: User = Depends(get_current_admin),
@@ -188,7 +191,29 @@ def init_admin_routes(app: FastAPI):
         db.refresh(user)
         return {"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser}
 
-    @app.put("/admin/users/{user_id}", response_model=dict)
+    @app.post("/admin/api/users/admin", tags=["admin"])
+    async def create_admin_user(
+        user_data: UserCreate,
+        current_admin: User = Depends(get_current_admin),
+        db: Session = Depends(get_db)
+    ):
+        if db.query(User).filter(User.email == user_data.email).first():
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        hashed_password = get_password_hash(user_data.password)
+        user = User(
+            email=user_data.email,
+            hashed_password=hashed_password,
+            full_name=user_data.full_name,
+            is_active=True,
+            is_superuser=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return {"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser}
+
+    @app.put("/admin/users/{user_id}", response_model=dict, tags=["admin"])
     async def update_user(user_id: int, user_data: UserUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -210,7 +235,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(user)
         return {"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser}
 
-    @app.delete("/admin/users/{user_id}")
+    @app.delete("/admin/users/{user_id}", tags=["admin"])
     async def delete_user(user_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -220,19 +245,19 @@ def init_admin_routes(app: FastAPI):
         return {"message": "User deleted successfully"}
 
     # Fund Info
-    @app.get("/admin/fund-info/list", response_model=List[dict])
+    @app.get("/admin/fund-info/list", response_model=List[dict], tags=["admin"])
     async def get_fund_info(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         fund_info = db.query(FundInfo).all()
         return [{"id": info.id, "name": info.name, "description": info.description, "address": info.address, "phone": info.phone, "email": info.email, "is_active": info.is_active} for info in fund_info]
 
-    @app.get("/admin/fund-info/{fund_id}", response_model=dict)
+    @app.get("/admin/fund-info/{fund_id}", response_model=dict, tags=["admin"])
     async def get_fund_info(fund_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         fund_info = db.query(FundInfo).filter(FundInfo.id == fund_id).first()
         if not fund_info:
             raise HTTPException(status_code=404, detail="Fund info not found")
         return {"id": fund_info.id, "name": fund_info.name, "description": fund_info.description, "address": fund_info.address, "phone": fund_info.phone, "email": fund_info.email, "is_active": fund_info.is_active}
 
-    @app.post("/admin/fund-info", response_model=dict)
+    @app.post("/admin/fund-info", response_model=dict, tags=["admin"])
     async def create_fund_info(fund_data: FundInfoCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         fund_info = FundInfo(**fund_data.dict())
         db.add(fund_info)
@@ -240,7 +265,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(fund_info)
         return {"id": fund_info.id, "name": fund_info.name, "description": fund_info.description, "address": fund_info.address, "phone": fund_info.phone, "email": fund_info.email, "is_active": fund_info.is_active}
 
-    @app.put("/admin/fund-info/{fund_id}", response_model=dict)
+    @app.put("/admin/fund-info/{fund_id}", response_model=dict, tags=["admin"])
     async def update_fund_info(fund_id: int, fund_data: FundInfoUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         fund_info = db.query(FundInfo).filter(FundInfo.id == fund_id).first()
         if not fund_info:
@@ -253,7 +278,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(fund_info)
         return {"id": fund_info.id, "name": fund_info.name, "description": fund_info.description, "address": fund_info.address, "phone": fund_info.phone, "email": fund_info.email, "is_active": fund_info.is_active}
 
-    @app.delete("/admin/fund-info/{fund_id}")
+    @app.delete("/admin/fund-info/{fund_id}", tags=["admin"])
     async def delete_fund_info(fund_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         fund_info = db.query(FundInfo).filter(FundInfo.id == fund_id).first()
         if not fund_info:
@@ -263,19 +288,19 @@ def init_admin_routes(app: FastAPI):
         return {"message": "Fund info deleted successfully"}
 
     # Social Links
-    @app.get("/admin/social-links", response_model=List[dict])
+    @app.get("/admin/social-links", response_model=List[dict], tags=["admin"])
     async def get_social_links(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         links = db.query(SocialLink).all()
         return [{"id": link.id, "fund_id": link.fund_id, "platform": link.platform, "url": link.url} for link in links]
 
-    @app.get("/admin/social-links/{link_id}", response_model=dict)
+    @app.get("/admin/social-links/{link_id}", response_model=dict, tags=["admin"])
     async def get_social_link(link_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         link = db.query(SocialLink).filter(SocialLink.id == link_id).first()
         if not link:
             raise HTTPException(status_code=404, detail="Social link not found")
         return {"id": link.id, "fund_id": link.fund_id, "platform": link.platform, "url": link.url}
 
-    @app.post("/admin/social-links", response_model=dict)
+    @app.post("/admin/social-links", response_model=dict, tags=["admin"])
     async def create_social_link(link_data: SocialLinkCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         link = SocialLink(**link_data.dict())
         db.add(link)
@@ -283,7 +308,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(link)
         return {"id": link.id, "fund_id": link.fund_id, "platform": link.platform, "url": link.url}
 
-    @app.put("/admin/social-links/{link_id}", response_model=dict)
+    @app.put("/admin/social-links/{link_id}", response_model=dict, tags=["admin"])
     async def update_social_link(link_id: int, link_data: SocialLinkUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         link = db.query(SocialLink).filter(SocialLink.id == link_id).first()
         if not link:
@@ -296,7 +321,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(link)
         return {"id": link.id, "fund_id": link.fund_id, "platform": link.platform, "url": link.url}
 
-    @app.delete("/admin/social-links/{link_id}")
+    @app.delete("/admin/social-links/{link_id}", tags=["admin"])
     async def delete_social_link(link_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         link = db.query(SocialLink).filter(SocialLink.id == link_id).first()
         if not link:
@@ -306,19 +331,19 @@ def init_admin_routes(app: FastAPI):
         return {"message": "Social link deleted successfully"}
 
     # Bank Details
-    @app.get("/admin/bank-details", response_model=List[dict])
+    @app.get("/admin/bank-details", response_model=List[dict], tags=["admin"])
     async def get_bank_details(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         details = db.query(BankDetail).all()
         return [{"id": detail.id, "fund_id": detail.fund_id, "bank_name": detail.bank_name, "account_number": detail.account_number, "swift_code": detail.swift_code, "iban": detail.iban, "currency": detail.currency} for detail in details]
 
-    @app.get("/admin/bank-details/{detail_id}", response_model=dict)
+    @app.get("/admin/bank-details/{detail_id}", response_model=dict, tags=["admin"])
     async def get_bank_detail(detail_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         detail = db.query(BankDetail).filter(BankDetail.id == detail_id).first()
         if not detail:
             raise HTTPException(status_code=404, detail="Bank detail not found")
         return {"id": detail.id, "fund_id": detail.fund_id, "bank_name": detail.bank_name, "account_number": detail.account_number, "swift_code": detail.swift_code, "iban": detail.iban, "currency": detail.currency}
 
-    @app.post("/admin/bank-details", response_model=dict)
+    @app.post("/admin/bank-details", response_model=dict, tags=["admin"])
     async def create_bank_detail(detail_data: BankDetailCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         detail = BankDetail(**detail_data.dict())
         db.add(detail)
@@ -326,7 +351,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(detail)
         return {"id": detail.id, "fund_id": detail.fund_id, "bank_name": detail.bank_name, "account_number": detail.account_number, "swift_code": detail.swift_code, "iban": detail.iban, "currency": detail.currency}
 
-    @app.put("/admin/bank-details/{detail_id}", response_model=dict)
+    @app.put("/admin/bank-details/{detail_id}", response_model=dict, tags=["admin"])
     async def update_bank_detail(detail_id: int, detail_data: BankDetailUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         detail = db.query(BankDetail).filter(BankDetail.id == detail_id).first()
         if not detail:
@@ -339,7 +364,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(detail)
         return {"id": detail.id, "fund_id": detail.fund_id, "bank_name": detail.bank_name, "account_number": detail.account_number, "swift_code": detail.swift_code, "iban": detail.iban, "currency": detail.currency}
 
-    @app.delete("/admin/bank-details/{detail_id}")
+    @app.delete("/admin/bank-details/{detail_id}", tags=["admin"])
     async def delete_bank_detail(detail_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         detail = db.query(BankDetail).filter(BankDetail.id == detail_id).first()
         if not detail:
@@ -349,52 +374,64 @@ def init_admin_routes(app: FastAPI):
         return {"message": "Bank detail deleted successfully"}
 
     # Feedback
-    @app.get("/admin/feedback", response_model=List[dict])
+    @app.get("/admin/feedback", response_model=List[dict], tags=["admin"])
     async def get_feedback(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         feedback = db.query(Feedback).all()
         return [{"id": fb.id, "name": fb.name, "email": fb.email, "message": fb.message, "is_read": fb.is_read, "created_at": fb.created_at} for fb in feedback]
 
-    @app.get("/admin/feedback/{feedback_id}", response_model=dict)
+    @app.get("/admin/feedback/{feedback_id}", response_model=dict, tags=["admin"])
     async def get_feedback(feedback_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
         if not feedback:
             raise HTTPException(status_code=404, detail="Feedback not found")
         return {"id": feedback.id, "name": feedback.name, "email": feedback.email, "message": feedback.message, "is_read": feedback.is_read, "created_at": feedback.created_at}
 
-    @app.put("/admin/feedback/{feedback_id}", response_model=dict)
-    async def update_feedback(feedback_id: int, feedback_data: FeedbackUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    @app.put("/admin/feedback/{feedback_id}", response_model=FeedbackRead, tags=["admin"])
+    async def update_feedback_status(
+        feedback_id: int,
+        feedback_update: FeedbackUpdate,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_admin),
+    ):
+        """
+        Update feedback read status.
+        """
         feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
         if not feedback:
             raise HTTPException(status_code=404, detail="Feedback not found")
-        
-        feedback.is_read = feedback_data.is_read
+
+        feedback.is_read = feedback_update.is_read
         db.commit()
         db.refresh(feedback)
-        return {"id": feedback.id, "name": feedback.name, "email": feedback.email, "message": feedback.message, "is_read": feedback.is_read, "created_at": feedback.created_at}
+        return feedback
 
-    @app.delete("/admin/feedback/{feedback_id}")
-    async def delete_feedback(feedback_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
-        feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
-        if not feedback:
+    @app.delete("/admin/feedback/{feedback_id}", tags=["admin"])
+    def delete_feedback(
+        feedback_id: int,
+        current_user: User = Depends(get_current_admin),
+        db: Session = Depends(get_db)
+    ):
+        """Удалить отзыв"""
+        db_feedback = crud.get_feedback(db=db, feedback_id=feedback_id)
+        if db_feedback is None:
             raise HTTPException(status_code=404, detail="Feedback not found")
-        db.delete(feedback)
-        db.commit()
+        crud.delete_feedback(db=db, feedback_id=feedback_id)
         return {"message": "Feedback deleted successfully"}
 
     # Campaigns
-    @app.get("/admin/campaigns", response_model=List[dict])
+    @app.get("/admin/campaigns", response_model=List[dict], tags=["admin"])
     async def get_campaigns(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         campaigns = db.query(DonationCampaign).all()
         return [{"id": campaign.id, "title": campaign.title, "description": campaign.description, "wallet_id": campaign.wallet_id, "is_active": campaign.is_active} for campaign in campaigns]
 
-    @app.get("/admin/campaigns/{campaign_id}", response_model=dict)
+    @app.get("/admin/campaigns/{campaign_id}", response_model=dict, tags=["admin"])
     async def get_campaign(campaign_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         campaign = db.query(DonationCampaign).filter(DonationCampaign.id == campaign_id).first()
         if not campaign:
             raise HTTPException(status_code=404, detail="Campaign not found")
         return {"id": campaign.id, "title": campaign.title, "description": campaign.description, "wallet_id": campaign.wallet_id, "is_active": campaign.is_active}
 
-    @app.post("/admin/campaigns", response_model=dict)
+    @app.post("/admin/campaigns", response_model=dict, tags=["admin"])
     async def create_campaign(campaign_data: CampaignCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         campaign = DonationCampaign(**campaign_data.dict())
         db.add(campaign)
@@ -402,7 +439,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(campaign)
         return {"id": campaign.id, "title": campaign.title, "description": campaign.description, "wallet_id": campaign.wallet_id, "is_active": campaign.is_active}
 
-    @app.put("/admin/campaigns/{campaign_id}", response_model=dict)
+    @app.put("/admin/campaigns/{campaign_id}", response_model=dict, tags=["admin"])
     async def update_campaign(campaign_id: int, campaign_data: CampaignUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         campaign = db.query(DonationCampaign).filter(DonationCampaign.id == campaign_id).first()
         if not campaign:
@@ -415,7 +452,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(campaign)
         return {"id": campaign.id, "title": campaign.title, "description": campaign.description, "wallet_id": campaign.wallet_id, "is_active": campaign.is_active}
 
-    @app.delete("/admin/campaigns/{campaign_id}")
+    @app.delete("/admin/campaigns/{campaign_id}", tags=["admin"])
     async def delete_campaign(campaign_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         campaign = db.query(DonationCampaign).filter(DonationCampaign.id == campaign_id).first()
         if not campaign:
@@ -425,19 +462,19 @@ def init_admin_routes(app: FastAPI):
         return {"message": "Campaign deleted successfully"}
 
     # Wallets
-    @app.get("/admin/wallets", response_model=List[dict])
+    @app.get("/admin/wallets", response_model=List[dict], tags=["admin"])
     async def get_wallets(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         wallets = db.query(Wallet).all()
         return [{"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc} for wallet in wallets]
 
-    @app.get("/admin/wallets/{wallet_id}", response_model=dict)
+    @app.get("/admin/wallets/{wallet_id}", response_model=dict, tags=["admin"])
     async def get_wallet(wallet_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
         if not wallet:
             raise HTTPException(status_code=404, detail="Wallet not found")
         return {"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
 
-    @app.post("/admin/wallets", response_model=dict)
+    @app.post("/admin/wallets", response_model=dict, tags=["admin"])
     async def create_wallet(wallet_data: WalletCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         wallet = Wallet(**wallet_data.dict())
         db.add(wallet)
@@ -445,7 +482,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(wallet)
         return {"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
 
-    @app.put("/admin/wallets/{wallet_id}", response_model=dict)
+    @app.put("/admin/wallets/{wallet_id}", response_model=dict, tags=["admin"])
     async def update_wallet(wallet_id: int, wallet_data: WalletUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
         if not wallet:
@@ -458,7 +495,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(wallet)
         return {"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
 
-    @app.delete("/admin/wallets/{wallet_id}")
+    @app.delete("/admin/wallets/{wallet_id}", tags=["admin"])
     async def delete_wallet(wallet_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
         if not wallet:
@@ -468,19 +505,19 @@ def init_admin_routes(app: FastAPI):
         return {"message": "Wallet deleted successfully"}
 
     # Publications
-    @app.get("/admin/publications", response_model=List[dict])
+    @app.get("/admin/publications", response_model=List[dict], tags=["admin"])
     async def get_publications(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publications = db.query(Publication).all()
         return [{"id": pub.id, "title": pub.title, "slug": pub.slug, "photo": pub.photo, "text": pub.text, "is_active": pub.is_active, "is_fundraising": pub.is_fundraising, "source_link": pub.source_link} for pub in publications]
 
-    @app.get("/admin/publications/{publication_id}", response_model=dict)
+    @app.get("/admin/publications/{publication_id}", response_model=dict, tags=["admin"])
     async def get_publication(publication_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publication = db.query(Publication).filter(Publication.id == publication_id).first()
         if not publication:
             raise HTTPException(status_code=404, detail="Publication not found")
         return {"id": publication.id, "title": publication.title, "slug": publication.slug, "photo": publication.photo, "text": publication.text, "is_active": publication.is_active, "is_fundraising": publication.is_fundraising, "source_link": publication.source_link}
 
-    @app.post("/admin/publications", response_model=dict)
+    @app.post("/admin/publications", response_model=dict, tags=["admin"])
     async def create_publication(publication_data: PublicationCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publication = Publication(**publication_data.dict())
         db.add(publication)
@@ -488,7 +525,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(publication)
         return {"id": publication.id, "title": publication.title, "slug": publication.slug, "photo": publication.photo, "text": publication.text, "is_active": publication.is_active, "is_fundraising": publication.is_fundraising, "source_link": publication.source_link}
 
-    @app.put("/admin/publications/{publication_id}", response_model=dict)
+    @app.put("/admin/publications/{publication_id}", response_model=dict, tags=["admin"])
     async def update_publication(publication_id: int, publication_data: PublicationUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publication = db.query(Publication).filter(Publication.id == publication_id).first()
         if not publication:
@@ -501,7 +538,7 @@ def init_admin_routes(app: FastAPI):
         db.refresh(publication)
         return {"id": publication.id, "title": publication.title, "slug": publication.slug, "photo": publication.photo, "text": publication.text, "is_active": publication.is_active, "is_fundraising": publication.is_fundraising, "source_link": publication.source_link}
 
-    @app.delete("/admin/publications/{publication_id}")
+    @app.delete("/admin/publications/{publication_id}", tags=["admin"])
     async def delete_publication(publication_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publication = db.query(Publication).filter(Publication.id == publication_id).first()
         if not publication:
