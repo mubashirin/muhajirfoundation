@@ -83,6 +83,7 @@ class FeedbackUpdate(BaseModel):
 class CampaignCreate(BaseModel):
     title: str
     description: Optional[str] = None
+    target_amount: Decimal
     wallet_id: Optional[int] = None
     is_active: bool = True
 
@@ -94,7 +95,6 @@ class CampaignUpdate(BaseModel):
 
 class WalletCreate(BaseModel):
     name: str
-    campaign_id: Optional[int] = None
     usdt_trc20: Optional[str] = None
     eth: Optional[str] = None
     btc: Optional[str] = None
@@ -152,11 +152,6 @@ def init_admin_routes(app: FastAPI):
     app.include_router(auth_router, prefix=settings.API_V1_STR)
 
     # Users
-    @app.get("/admin/api/users", tags=["admin"])
-    async def get_users_list(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
-        users = db.query(User).all()
-        return [{"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser} for user in users]
-
     @app.get("/admin/users", response_model=List[dict], tags=["admin"])
     async def get_users(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         users = db.query(User).all()
@@ -169,7 +164,7 @@ def init_admin_routes(app: FastAPI):
             raise HTTPException(status_code=404, detail="User not found")
         return {"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser}
 
-    @app.post("/admin/api/users", tags=["admin"])
+    @app.post("/admin/users", tags=["admin"])
     async def create_user(
         user_data: UserCreate,
         current_admin: User = Depends(get_current_admin),
@@ -185,28 +180,6 @@ def init_admin_routes(app: FastAPI):
             full_name=user_data.full_name,
             is_active=user_data.is_active,
             is_superuser=user_data.is_superuser
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return {"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser}
-
-    @app.post("/admin/api/users/admin", tags=["admin"])
-    async def create_admin_user(
-        user_data: UserCreate,
-        current_admin: User = Depends(get_current_admin),
-        db: Session = Depends(get_db)
-    ):
-        if db.query(User).filter(User.email == user_data.email).first():
-            raise HTTPException(status_code=400, detail="Email already registered")
-        
-        hashed_password = get_password_hash(user_data.password)
-        user = User(
-            email=user_data.email,
-            hashed_password=hashed_password,
-            full_name=user_data.full_name,
-            is_active=True,
-            is_superuser=True
         )
         db.add(user)
         db.commit()
@@ -465,14 +438,14 @@ def init_admin_routes(app: FastAPI):
     @app.get("/admin/wallets", response_model=List[dict], tags=["admin"])
     async def get_wallets(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         wallets = db.query(Wallet).all()
-        return [{"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc} for wallet in wallets]
+        return [{"id": wallet.id, "name": wallet.name, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc} for wallet in wallets]
 
     @app.get("/admin/wallets/{wallet_id}", response_model=dict, tags=["admin"])
     async def get_wallet(wallet_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
         if not wallet:
             raise HTTPException(status_code=404, detail="Wallet not found")
-        return {"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
+        return {"id": wallet.id, "name": wallet.name, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
 
     @app.post("/admin/wallets", response_model=dict, tags=["admin"])
     async def create_wallet(wallet_data: WalletCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -480,7 +453,7 @@ def init_admin_routes(app: FastAPI):
         db.add(wallet)
         db.commit()
         db.refresh(wallet)
-        return {"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
+        return {"id": wallet.id, "name": wallet.name, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
 
     @app.put("/admin/wallets/{wallet_id}", response_model=dict, tags=["admin"])
     async def update_wallet(wallet_id: int, wallet_data: WalletUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -493,7 +466,7 @@ def init_admin_routes(app: FastAPI):
         
         db.commit()
         db.refresh(wallet)
-        return {"id": wallet.id, "name": wallet.name, "campaign_id": wallet.campaign_id, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
+        return {"id": wallet.id, "name": wallet.name, "usdt_trc20": wallet.usdt_trc20, "eth": wallet.eth, "btc": wallet.btc}
 
     @app.delete("/admin/wallets/{wallet_id}", tags=["admin"])
     async def delete_wallet(wallet_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -519,6 +492,10 @@ def init_admin_routes(app: FastAPI):
 
     @app.post("/admin/publications", response_model=dict, tags=["admin"])
     async def create_publication(publication_data: PublicationCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+        # Проверяем уникальность slug
+        if db.query(Publication).filter(Publication.slug == publication_data.slug).first():
+            raise HTTPException(status_code=400, detail="Publication with this slug already exists")
+            
         publication = Publication(**publication_data.dict())
         db.add(publication)
         db.commit()

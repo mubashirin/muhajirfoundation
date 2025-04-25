@@ -1,6 +1,6 @@
 app:
   name: "Muhajir Foundation API"
-  version: "1.0.0"
+  version: "1.0.1"
   debug: false
   api_v1_str: "/api/v1"
   workers: 4

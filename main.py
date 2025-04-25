@@ -49,4 +49,4 @@ init_admin_routes(app)
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Muhajir Foundation API"} 
+    return {"message": "Welcome to Muhajeer Foundation API", "version": settings.VERSION} 
