@@ -1,8 +1,7 @@
-import asyncio
 import typer
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from core.config import get_settings
-from core.database import async_session_maker
+from core.database import SessionLocal
 from users.models import User
 from core.security import get_password_hash
 from alembic.config import Config
@@ -11,32 +10,37 @@ from alembic import command
 app = typer.Typer()
 settings = get_settings()
 
-async def create_admin(
+def create_admin(
     email: str,
     password: str,
     full_name: str = "Admin",
-    db_session: AsyncSession = None
+    db: Session = None
 ) -> None:
     """Создает администратора в БД"""
-    if not db_session:
-        async with async_session_maker() as db_session:
-            # Проверяем, существует ли уже админ
-            admin = await db_session.get(User, 1)
-            if admin:
-                typer.echo("Admin already exists!")
-                return
+    if db is None:
+        db = SessionLocal()
+    
+    try:
+        # Проверяем, существует ли уже админ
+        admin = db.query(User).filter(User.email == email).first()
+        if admin:
+            typer.echo("Admin already exists!")
+            return
 
-            # Создаем админа
-            admin = User(
-                email=email,
-                hashed_password=get_password_hash(password),
-                full_name=full_name,
-                is_active=True,
-                is_superuser=True
-            )
-            db_session.add(admin)
-            await db_session.commit()
-            typer.echo(f"Admin created successfully! Email: {email}")
+        # Создаем админа
+        admin = User(
+            email=email,
+            hashed_password=get_password_hash(password),
+            full_name=full_name,
+            is_active=True,
+            is_superuser=True
+        )
+        db.add(admin)
+        db.commit()
+        typer.echo(f"Admin created successfully! Email: {email}")
+    finally:
+        if db is not None:
+            db.close()
 
 def run_migrations() -> None:
     """Применяет миграции к БД"""
@@ -59,7 +63,7 @@ def init(
     run_migrations()
     
     # Создаем админа
-    asyncio.run(create_admin(email, password, full_name))
+    create_admin(email, password, full_name)
 
 if __name__ == "__main__":
     app() 
