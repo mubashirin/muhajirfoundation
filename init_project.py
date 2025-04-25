@@ -45,7 +45,15 @@ def create_admin(
 def run_migrations() -> None:
     """Применяет миграции к БД"""
     try:
-        db_url = settings.get_database_url
+        yaml_config = load_yaml_config()
+        db = yaml_config.get("database", {})
+        required_fields = ["driver", "user", "password", "host", "port", "name"]
+        
+        if not all(field in db for field in required_fields):
+            missing = [f for f in required_fields if f not in db]
+            raise ValueError(f"Missing required database config fields: {missing}")
+            
+        db_url = f"{db['driver']}://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['name']}"
         
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", db_url)
