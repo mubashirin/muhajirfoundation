@@ -5,9 +5,14 @@ from sqlalchemy import pool
 
 from alembic import context
 
+import sys
+from os.path import abspath, dirname
+
+sys.path.append(dirname(dirname(abspath(__file__))))
+
 from core.database import Base
+from donations.models import DonationCampaign, Wallet
 from users.models import User
-from donations.models import Donation, DonationCampaign, Wallet
 from fund.models import FundInfo, SocialLink, BankDetail
 from feedback.models import Feedback
 from publications.models import Publication

@@ -30,6 +30,10 @@ def create_campaign(
     db: Session = Depends(get_db)
 ):
     """Создать новую кампанию по сбору средств"""
+    # Проверяем существование кошелька
+    wallet = crud.get_wallet(db, campaign.wallet_id)
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
     return crud.create_campaign(db, campaign)
 
 @router.put("/campaigns/{campaign_id}", response_model=schemas.DonationCampaign)
@@ -39,6 +43,12 @@ def update_campaign(
     db: Session = Depends(get_db)
 ):
     """Обновить информацию о кампании"""
+    # Проверяем существование кошелька
+    if campaign.wallet_id:
+        wallet = crud.get_wallet(db, campaign.wallet_id)
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+            
     updated_campaign = crud.update_campaign(db, campaign_id, campaign)
     if not updated_campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -53,16 +63,12 @@ def delete_campaign(campaign_id: int, db: Session = Depends(get_db)):
 
 # Роуты для кошельков
 @router.get("/wallets", response_model=List[schemas.Wallet])
-def get_wallets(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
+async def get_wallets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Получить список кошельков"""
     return crud.get_wallets(db, skip=skip, limit=limit)
 
 @router.get("/wallets/{wallet_id}", response_model=schemas.Wallet)
-def get_wallet(wallet_id: int, db: Session = Depends(get_db)):
+async def get_wallet(wallet_id: int, db: Session = Depends(get_db)):
     """Получить информацию о конкретном кошельке"""
     wallet = crud.get_wallet(db, wallet_id)
     if not wallet:
@@ -70,27 +76,20 @@ def get_wallet(wallet_id: int, db: Session = Depends(get_db)):
     return wallet
 
 @router.post("/wallets", response_model=schemas.Wallet)
-def create_wallet(
-    wallet: schemas.WalletCreate,
-    db: Session = Depends(get_db)
-):
+async def create_wallet(wallet: schemas.WalletCreate, db: Session = Depends(get_db)):
     """Создать новый кошелек"""
     return crud.create_wallet(db, wallet)
 
 @router.put("/wallets/{wallet_id}", response_model=schemas.Wallet)
-def update_wallet(
-    wallet_id: int,
-    wallet: schemas.WalletUpdate,
-    db: Session = Depends(get_db)
-):
+async def update_wallet(wallet_id: int, wallet: schemas.WalletUpdate, db: Session = Depends(get_db)):
     """Обновить информацию о кошельке"""
-    updated_wallet = crud.update_wallet(db, wallet_id, wallet)
-    if not updated_wallet:
+    db_wallet = crud.update_wallet(db, wallet_id, wallet)
+    if not db_wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
-    return updated_wallet
+    return db_wallet
 
 @router.delete("/wallets/{wallet_id}")
-def delete_wallet(wallet_id: int, db: Session = Depends(get_db)):
+async def delete_wallet(wallet_id: int, db: Session = Depends(get_db)):
     """Удалить кошелек"""
     if not crud.delete_wallet(db, wallet_id):
         raise HTTPException(status_code=404, detail="Wallet not found")
