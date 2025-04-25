@@ -10,7 +10,7 @@ database:
   driver: "postgresql"
   host: "localhost"
   port: 5432
-  name: "muhajir_foundation"
+  name: "muhajirfoundation"
   user: "coder"
   password: "Halil4983301..!"
   pool_size: 5
