@@ -52,8 +52,14 @@ def run_migrations() -> None:
         if not all(field in db for field in required_fields):
             missing = [f for f in required_fields if f not in db]
             raise ValueError(f"Missing required database config fields: {missing}")
+        
+        # Отладочный вывод
+        typer.echo("Database config:")
+        for k, v in db.items():
+            typer.echo(f"{k}: {v}")
             
         db_url = f"{db['driver']}://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['name']}"
+        typer.echo(f"Database URL: {db_url}")
         
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", db_url)
