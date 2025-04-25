@@ -45,9 +45,7 @@ def create_admin(
 def run_migrations() -> None:
     """Применяет миграции к БД"""
     try:
-        yaml_config = load_yaml_config()
-        db = yaml_config["database"]
-        db_url = f"{db['driver']}://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['name']}"
+        db_url = settings.get_database_url
         
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", db_url)
