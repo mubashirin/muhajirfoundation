@@ -330,6 +330,23 @@
             font-size: 12px;
             font-style: italic;
         }
+
+        /* Добавляем стили для кнопки добавления информации о фонде */
+        .add-fund-info-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .add-fund-info-btn:hover {
+            background-color: #c0392b;
+        }
     </style>
 </head>
 <body>
@@ -535,7 +552,7 @@
                 </div>
                 <div class="form-group">
                     <label for="password">Пароль</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
                 </div>
                 <div class="form-group">
                     <label for="full_name">Полное имя</label>
@@ -597,7 +614,42 @@
     </div>
 
     <div id="fundInfoModal" class="modal">
-        <!-- Содержимое модального окна информации о фонде -->
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Добавить информацию о фонде</h2>
+            <form id="fundInfoForm">
+                <div class="form-group">
+                    <label for="fund_name">Название</label>
+                    <input type="text" id="fund_name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="fund_email">Email</label>
+                    <input type="email" id="fund_email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="fund_phone">Телефон</label>
+                    <input type="text" id="fund_phone" name="phone" required>
+                </div>
+                <div class="form-group">
+                    <label for="fund_address">Адрес</label>
+                    <input type="text" id="fund_address" name="address" required>
+                </div>
+                <div class="form-group">
+                    <label for="fund_description">Описание</label>
+                    <textarea id="fund_description" name="description" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="fund_is_active" name="is_active" checked>
+                        Активен
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeFundInfoModal()">Отмена</button>
+                    <button type="submit" class="btn-submit">Сохранить</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div id="socialLinkModal" class="modal">
@@ -722,6 +774,11 @@
             const addUserBtn = document.querySelector('.add-user-btn');
             if (addUserBtn) {
                 addUserBtn.addEventListener('click', showUserModal);
+            }
+
+            const addFundInfoBtn = document.querySelector('.add-fund-info-btn');
+            if (addFundInfoBtn) {
+                addFundInfoBtn.addEventListener('click', showFundInfoModal);
             }
 
             const addUserForm = document.getElementById('addUserForm');
@@ -870,18 +927,14 @@
                 });
             }
 
-            // Закрытие модальных окон
+            // Закрытие модальных окон при клике на крестик
             const closeModalBtns = document.querySelectorAll('.close-modal');
             if (closeModalBtns.length > 0) {
                 closeModalBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
-                        const editUserModal = document.getElementById('editUserModal');
-                        const userModal = document.getElementById('userModal');
-                        
-                        if (editUserModal && editUserModal.style.display === 'block') {
-                            closeEditUserModal();
-                        } else if (userModal && userModal.style.display === 'block') {
-                            closeUserModal();
+                        const fundInfoModal = document.getElementById('fundInfoModal');
+                        if (fundInfoModal && fundInfoModal.style.display === 'block') {
+                            closeFundInfoModal();
                         }
                     });
                 });
@@ -889,13 +942,8 @@
 
             // Закрытие модальных окон при клике вне их области
             window.addEventListener('click', (e) => {
-                const editUserModal = document.getElementById('editUserModal');
-                const userModal = document.getElementById('userModal');
-                
-                if (e.target === editUserModal) {
-                    closeEditUserModal();
-                } else if (e.target === userModal) {
-                    closeUserModal();
+                if (e.target.id === 'fundInfoModal') {
+                    closeFundInfoModal();
                 }
             });
         });
@@ -1191,6 +1239,42 @@
         }
 
         // Функции для работы с информацией о фонде
+        function showFundInfoModal(isEdit = false, fundInfo = null) {
+            const modal = document.getElementById('fundInfoModal');
+            const form = document.getElementById('fundInfoForm');
+            const title = document.querySelector('#fundInfoModal h2');
+            
+            if (modal && form && title) {
+                if (isEdit && fundInfo) {
+                    title.textContent = 'Изменить информацию о фонде';
+                    form.querySelector('input[name="name"]').value = fundInfo.name;
+                    form.querySelector('input[name="email"]').value = fundInfo.email;
+                    form.querySelector('input[name="phone"]').value = fundInfo.phone;
+                    form.querySelector('input[name="address"]').value = fundInfo.address;
+                    form.querySelector('textarea[name="description"]').value = fundInfo.description || '';
+                    form.querySelector('input[name="is_active"]').checked = fundInfo.is_active;
+                    form.dataset.editId = fundInfo.id;
+                } else {
+                    title.textContent = 'Добавить информацию о фонде';
+                    form.reset();
+                    delete form.dataset.editId;
+                }
+                modal.style.display = 'block';
+            }
+        }
+
+        function closeFundInfoModal() {
+            const modal = document.getElementById('fundInfoModal');
+            const form = document.getElementById('fundInfoForm');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            if (form) {
+                form.reset();
+                delete form.dataset.editId;
+            }
+        }
+
         async function editFundInfo(id) {
             const token = localStorage.getItem('token');
             try {
@@ -1202,73 +1286,104 @@
                 
                 if (response.ok) {
                     const fundInfo = await response.json();
-                    document.getElementById('edit_fund_info_id').value = fundInfo.id;
-                    document.getElementById('edit_fund_name').value = fundInfo.name;
-                    document.getElementById('edit_fund_description').value = fundInfo.description;
-                    document.getElementById('edit_fund_address').value = fundInfo.address;
-                    document.getElementById('edit_fund_phone').value = fundInfo.phone;
-                    document.getElementById('edit_fund_email').value = fundInfo.email;
-                    document.getElementById('edit_fund_is_active').checked = fundInfo.is_active;
-                    
-                    document.getElementById('editFundInfoModal').style.display = 'block';
+                    showFundInfoModal(true, fundInfo);
                 } else {
-                    throw new Error('Failed to load fund info');
+                    throw new Error('Не удалось загрузить информацию о фонде');
                 }
             } catch (error) {
                 console.error('Error loading fund info:', error);
-                alert('Ошибка при загрузке данных фонда');
+                alert('Ошибка при загрузке данных фонда: ' + error.message);
             }
         }
 
-        function closeEditFundInfoModal() {
-            document.getElementById('editFundInfoModal').style.display = 'none';
-            document.getElementById('editFundInfoForm').reset();
-        }
+        async function deleteFundInfo(id) {
+            if (!confirm('Вы уверены, что хотите удалить эту информацию о фонде?')) {
+                return;
+            }
 
-        // Обработка формы редактирования информации о фонде
-        document.getElementById('editFundInfoForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const fundInfoId = document.getElementById('edit_fund_info_id').value;
-            const formData = new FormData(e.target);
-            const fundInfoData = {
-                name: formData.get('name'),
-                description: formData.get('description'),
-                address: formData.get('address'),
-                phone: formData.get('phone'),
-                email: formData.get('email'),
-                is_active: formData.get('is_active') === 'on'
-            };
-
+            const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`/admin/fund-info/${fundInfoId}`, {
-                    method: 'PUT',
+                const response = await fetch(`/admin/fund-info/${id}`, {
+                    method: 'DELETE',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify(fundInfoData)
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
 
                 if (response.ok) {
-                    closeEditFundInfoModal();
                     loadFundInfo();
                 } else {
-                    const data = await response.json();
-                    throw new Error(data.detail || 'Ошибка обновления информации о фонде');
+                    throw new Error('Не удалось удалить информацию о фонде');
                 }
             } catch (error) {
-                console.error('Error updating fund info:', error);
-                alert('Ошибка при обновлении информации о фонде: ' + error.message);
+                console.error('Error deleting fund info:', error);
+                alert('Ошибка при удалении информации о фонде: ' + error.message);
             }
-        });
+        }
 
-        // Закрытие модального окна при клике вне его области
-        window.addEventListener('click', (e) => {
-            if (e.target.id === 'editFundInfoModal') {
-                closeEditFundInfoModal();
+        // Обработка формы информации о фонде
+        const fundInfoForm = document.getElementById('fundInfoForm');
+        if (fundInfoForm) {
+            fundInfoForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = new FormData(e.target);
+                const fundInfoData = {
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone'),
+                    address: formData.get('address'),
+                    description: formData.get('description'),
+                    is_active: formData.get('is_active') === 'on'
+                };
+
+                const fundInfoId = e.target.dataset.editId;
+                const method = fundInfoId ? 'PUT' : 'POST';
+                const url = fundInfoId ? `/admin/fund-info/${fundInfoId}` : '/admin/fund-info';
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify(fundInfoData)
+                    });
+
+                    if (response.ok) {
+                        closeFundInfoModal();
+                        loadFundInfo();
+                    } else {
+                        const data = await response.json();
+                        throw new Error(data.detail || 'Ошибка сохранения информации о фонде');
+                    }
+                } catch (error) {
+                    console.error('Error saving fund info:', error);
+                    alert('Ошибка при сохранении информации о фонде: ' + error.message);
+                }
+            });
+        }
+
+        // Функции для работы с модальным окном редактирования пользователя
+        function showEditUserModal() {
+            const modal = document.getElementById('editUserModal');
+            if (modal) {
+                modal.style.display = 'block';
             }
-        });
+        }
+
+        function closeEditUserModal() {
+            const modal = document.getElementById('editUserModal');
+            const form = document.getElementById('editUserForm');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            if (form) {
+                form.reset();
+                document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+            }
+        }
 
         // Функции для работы с социальными сетями
         let fundsList = []; // Для хранения списка фондов
@@ -1573,17 +1688,6 @@
                 console.error('Error loading campaign:', error);
                 alert('Ошибка при загрузке данных кампании: ' + error.message);
             }
-        }
-
-        // Функции для работы с модальным окном редактирования пользователя
-        function showEditUserModal() {
-            document.getElementById('editUserModal').style.display = 'block';
-        }
-
-        function closeEditUserModal() {
-            document.getElementById('editUserModal').style.display = 'none';
-            document.getElementById('editUserForm').reset();
-            document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
         }
     </script>
 </body>
