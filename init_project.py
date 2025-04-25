@@ -1,7 +1,7 @@
 import typer
 from sqlalchemy.orm import Session
 from core.config import get_settings
-from core.database import SessionLocal
+from core.database import get_db
 from users.models import User
 from core.security import get_password_hash
 from alembic.config import Config
@@ -18,7 +18,7 @@ def create_admin(
 ) -> None:
     """Создает администратора в БД"""
     if db is None:
-        db = SessionLocal()
+        db = next(get_db())
     
     try:
         # Проверяем, существует ли уже админ
@@ -46,6 +46,7 @@ def run_migrations() -> None:
     """Применяет миграции к БД"""
     try:
         alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
         command.upgrade(alembic_cfg, "head")
         typer.echo("Migrations applied successfully!")
     except Exception as e:
