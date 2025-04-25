@@ -1,8 +1,8 @@
-"""initial
+"""Initial migration
 
-Revision ID: a6d6d2d23ebe
+Revision ID: d7e9293320f8
 Revises: 
-Create Date: 2025-04-22 17:42:44.992036
+Create Date: 2025-04-24 18:48:48.973101
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a6d6d2d23ebe'
+revision: str = 'd7e9293320f8'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,14 +24,15 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('uuid', sa.UUID(), nullable=True),
     sa.Column('title', sa.String(), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('description', sa.String(), nullable=True),
+    sa.Column('status', sa.String(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('uuid')
     )
     op.create_index(op.f('ix_donation_campaigns_id'), 'donation_campaigns', ['id'], unique=False)
-    op.create_index(op.f('ix_donation_campaigns_uuid'), 'donation_campaigns', ['uuid'], unique=True)
     op.create_table('feedback',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
@@ -99,6 +100,24 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_bank_details_id'), 'bank_details', ['id'], unique=False)
+    op.create_table('donations',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('uuid', sa.UUID(), nullable=True),
+    sa.Column('campaign_id', sa.Integer(), nullable=False),
+    sa.Column('amount', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('currency', sa.String(), nullable=False),
+    sa.Column('donor_name', sa.String(), nullable=True),
+    sa.Column('donor_email', sa.String(), nullable=True),
+    sa.Column('donor_phone', sa.String(), nullable=True),
+    sa.Column('message', sa.Text(), nullable=True),
+    sa.Column('is_anonymous', sa.Boolean(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['campaign_id'], ['donation_campaigns.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_donations_id'), 'donations', ['id'], unique=False)
+    op.create_index(op.f('ix_donations_uuid'), 'donations', ['uuid'], unique=True)
     op.create_table('social_links',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('fund_id', sa.Integer(), nullable=False),
@@ -114,14 +133,14 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('uuid', sa.UUID(), nullable=True),
     sa.Column('name', sa.String(), nullable=False),
-    sa.Column('campaign_id', sa.Integer(), nullable=False),
+    sa.Column('campaign_id', sa.Integer(), nullable=True),
     sa.Column('usdt_trc20', sa.String(), nullable=True),
     sa.Column('bch', sa.String(), nullable=True),
     sa.Column('eth', sa.String(), nullable=True),
     sa.Column('btc', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['campaign_id'], ['donation_campaigns.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['campaign_id'], ['donation_campaigns.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_wallets_id'), 'wallets', ['id'], unique=False)
@@ -136,6 +155,9 @@ def downgrade() -> None:
     op.drop_table('wallets')
     op.drop_index(op.f('ix_social_links_id'), table_name='social_links')
     op.drop_table('social_links')
+    op.drop_index(op.f('ix_donations_uuid'), table_name='donations')
+    op.drop_index(op.f('ix_donations_id'), table_name='donations')
+    op.drop_table('donations')
     op.drop_index(op.f('ix_bank_details_id'), table_name='bank_details')
     op.drop_table('bank_details')
     op.drop_index(op.f('ix_users_id'), table_name='users')
@@ -147,7 +169,6 @@ def downgrade() -> None:
     op.drop_table('fund_info')
     op.drop_index(op.f('ix_feedback_id'), table_name='feedback')
     op.drop_table('feedback')
-    op.drop_index(op.f('ix_donation_campaigns_uuid'), table_name='donation_campaigns')
     op.drop_index(op.f('ix_donation_campaigns_id'), table_name='donation_campaigns')
     op.drop_table('donation_campaigns')
     # ### end Alembic commands ###

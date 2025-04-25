@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление банковскими реквизитами - Админ панель</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #343a40;
+            padding-top: 20px;
+        }
+        .sidebar a {
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 15px;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #495057;
+        }
+        .sidebar a.active {
+            background-color: #0d6efd;
+        }
+        .main-content {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Боковая панель -->
+            <div class="col-md-2 sidebar">
+                <h4 class="text-white text-center mb-4">Админ панель</h4>
+                <a href="/admin/users"><i class="bi bi-people"></i> Пользователи</a>
+                <a href="/admin/fund-info"><i class="bi bi-building"></i> Информация о фонде</a>
+                <a href="/admin/social-links"><i class="bi bi-link-45deg"></i> Социальные сети</a>
+                <a href="/admin/bank-details" class="active"><i class="bi bi-bank"></i> Банковские реквизиты</a>
+                <a href="/admin/feedback"><i class="bi bi-chat-dots"></i> Обратная связь</a>
+                <a href="/admin/campaigns"><i class="bi bi-megaphone"></i> Кампании</a>
+                <a href="/admin/wallets"><i class="bi bi-wallet2"></i> Кошельки</a>
+                <a href="/admin/publications"><i class="bi bi-newspaper"></i> Публикации</a>
+                <a href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Выход</a>
+            </div>
+
+            <!-- Основной контент -->
+            <div class="col-md-10 main-content">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Управление банковскими реквизитами</h2>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBankDetailModal">
+                        <i class="bi bi-plus-lg"></i> Добавить реквизиты
+                    </button>
+                </div>
+
+                <!-- Таблица банковских реквизитов -->
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Банк</th>
+                                <th>Номер счета</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bankDetailsTable">
+                            <!-- Данные будут загружены через JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления банковских реквизитов -->
+    <div class="modal fade" id="addBankDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить банковские реквизиты</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addBankDetailForm">
+                        <div class="mb-3">
+                            <label for="bankName" class="form-label">Название банка</label>
+                            <input type="text" class="form-control" id="bankName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="accountNumber" class="form-label">Номер счета</label>
+                            <input type="text" class="form-control" id="accountNumber" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="addBankDetail()">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования банковских реквизитов -->
+    <div class="modal fade" id="editBankDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать банковские реквизиты</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editBankDetailForm">
+                        <input type="hidden" id="editBankDetailId">
+                        <div class="mb-3">
+                            <label for="editBankName" class="form-label">Название банка</label>
+                            <input type="text" class="form-control" id="editBankName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editAccountNumber" class="form-label">Номер счета</label>
+                            <input type="text" class="form-control" id="editAccountNumber" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="updateBankDetail()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Загрузка банковских реквизитов при загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadBankDetails);
+
+        // Функция загрузки банковских реквизитов
+        async function loadBankDetails() {
+            try {
+                const response = await fetch('/admin/bank-details', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                const data = await response.json();
+                
+                const tableBody = document.getElementById('bankDetailsTable');
+                tableBody.innerHTML = '';
+                
+                data.forEach(detail => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${detail.id}</td>
+                        <td>${detail.bank_name}</td>
+                        <td>${detail.account_number}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editBankDetail(${detail.id}, '${detail.bank_name}', '${detail.account_number}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteBankDetail(${detail.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Ошибка при загрузке банковских реквизитов:', error);
+                alert('Ошибка при загрузке банковских реквизитов');
+            }
+        }
+
+        // Функция добавления банковских реквизитов
+        async function addBankDetail() {
+            const bankName = document.getElementById('bankName').value;
+            const accountNumber = document.getElementById('accountNumber').value;
+
+            try {
+                const response = await fetch('/admin/bank-details', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        bank_name: bankName,
+                        account_number: accountNumber
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('addBankDetailModal').querySelector('.btn-close').click();
+                    document.getElementById('addBankDetailForm').reset();
+                    loadBankDetails();
+                } else {
+                    alert('Ошибка при добавлении банковских реквизитов');
+                }
+            } catch (error) {
+                console.error('Ошибка при добавлении банковских реквизитов:', error);
+                alert('Ошибка при добавлении банковских реквизитов');
+            }
+        }
+
+        // Функция редактирования банковских реквизитов
+        function editBankDetail(id, bankName, accountNumber) {
+            document.getElementById('editBankDetailId').value = id;
+            document.getElementById('editBankName').value = bankName;
+            document.getElementById('editAccountNumber').value = accountNumber;
+            new bootstrap.Modal(document.getElementById('editBankDetailModal')).show();
+        }
+
+        // Функция обновления банковских реквизитов
+        async function updateBankDetail() {
+            const id = document.getElementById('editBankDetailId').value;
+            const bankName = document.getElementById('editBankName').value;
+            const accountNumber = document.getElementById('editAccountNumber').value;
+
+            try {
+                const response = await fetch(`/admin/bank-details/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        bank_name: bankName,
+                        account_number: accountNumber
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('editBankDetailModal').querySelector('.btn-close').click();
+                    loadBankDetails();
+                } else {
+                    alert('Ошибка при обновлении банковских реквизитов');
+                }
+            } catch (error) {
+                console.error('Ошибка при обновлении банковских реквизитов:', error);
+                alert('Ошибка при обновлении банковских реквизитов');
+            }
+        }
+
+        // Функция удаления банковских реквизитов
+        async function deleteBankDetail(id) {
+            if (confirm('Вы уверены, что хотите удалить эти банковские реквизиты?')) {
+                try {
+                    const response = await fetch(`/admin/bank-details/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        loadBankDetails();
+                    } else {
+                        alert('Ошибка при удалении банковских реквизитов');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при удалении банковских реквизитов:', error);
+                    alert('Ошибка при удалении банковских реквизитов');
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

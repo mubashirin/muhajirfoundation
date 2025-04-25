@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Информация о фонде - Админ-панель</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: #343a40;
+            color: white;
+        }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,.8);
+            padding: 0.8rem 1rem;
+        }
+        .sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,.1);
+        }
+        .sidebar .nav-link.active {
+            background: #007bff;
+            color: white;
+        }
+        .main-content {
+            padding: 2rem;
+        }
+        .card {
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,.125);
+        }
+        .form-label {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 px-0 sidebar">
+                <div class="p-3">
+                    <h5>Админ-панель</h5>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">
+                            <i class="bi bi-house-door"></i> Главная
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/users">
+                            <i class="bi bi-people"></i> Пользователи
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/fund-info">
+                            <i class="bi bi-info-circle"></i> Информация о фонде
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/social-links">
+                            <i class="bi bi-link-45deg"></i> Социальные сети
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/bank-details">
+                            <i class="bi bi-bank"></i> Банковские реквизиты
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/feedback">
+                            <i class="bi bi-chat-dots"></i> Обратная связь
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/campaigns">
+                            <i class="bi bi-collection"></i> Кампании
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/wallets">
+                            <i class="bi bi-wallet2"></i> Кошельки
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/publications">
+                            <i class="bi bi-file-text"></i> Публикации
+                        </a>
+                    </li>
+                    <li class="nav-item mt-3">
+                        <a class="nav-link text-danger" href="/admin/logout">
+                            <i class="bi bi-box-arrow-right"></i> Выйти
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Информация о фонде</h2>
+                    <button class="btn btn-primary" onclick="saveFundInfo()">
+                        <i class="bi bi-save"></i> Сохранить изменения
+                    </button>
+                </div>
+
+                <!-- Fund Info Form -->
+                <div class="card">
+                    <div class="card-body">
+                        <form id="fundInfoForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Название фонда</label>
+                                    <input type="text" class="form-control" name="name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" name="email" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Телефон</label>
+                                    <input type="tel" class="form-control" name="phone" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Адрес</label>
+                                    <input type="text" class="form-control" name="address" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Описание</label>
+                                <textarea class="form-control" name="description" rows="5" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Миссия</label>
+                                <textarea class="form-control" name="mission" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Цели</label>
+                                <textarea class="form-control" name="goals" rows="3" required></textarea>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Загрузка данных при открытии страницы
+        document.addEventListener('DOMContentLoaded', loadFundInfo);
+
+        async function loadFundInfo() {
+            try {
+                const response = await fetch('/admin/fund-info');
+                const data = await response.json();
+
+                const form = document.getElementById('fundInfoForm');
+                form.elements['name'].value = data.name || '';
+                form.elements['email'].value = data.email || '';
+                form.elements['phone'].value = data.phone || '';
+                form.elements['address'].value = data.address || '';
+                form.elements['description'].value = data.description || '';
+                form.elements['mission'].value = data.mission || '';
+                form.elements['goals'].value = data.goals || '';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при загрузке данных');
+            }
+        }
+
+        async function saveFundInfo() {
+            const form = document.getElementById('fundInfoForm');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/admin/fund-info', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Изменения сохранены');
+                } else {
+                    alert('Ошибка при сохранении изменений');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при сохранении изменений');
+            }
+        }
+    </script>
+</body>
+</html> 

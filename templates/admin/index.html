@@ -10,6 +10,42 @@
         .nav-link { cursor: pointer; }
         .table th { cursor: pointer; }
         .modal-dialog { max-width: 800px; }
+        
+        /* Wallet specific styles */
+        .wallet-address {
+            font-family: monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+        
+        .wallet-name {
+            font-weight: 500;
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        .btn-group-sm > .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            border-radius: 0.2rem;
+        }
+
+        .add-wallet-btn {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .add-wallet-btn:hover {
+            background-color: #0b5ed7;
+        }
     </style>
 </head>
 <body>
@@ -37,9 +73,6 @@
                         <a class="nav-link" onclick="loadCampaigns()">Campaigns</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" onclick="loadWallets()">Wallets</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" onclick="loadPublications()">Publications</a>
                     </li>
                 </ul>
@@ -51,7 +84,6 @@
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 id="current-section">Select a section</h2>
-            <button class="btn btn-primary" onclick="showCreateForm()">Create New</button>
         </div>
         <div id="data-container"></div>
     </div>
@@ -79,7 +111,27 @@
     <script>
         let currentSection = '';
         let currentId = null;
-        const modal = new bootstrap.Modal(document.getElementById('formModal'));
+        let modal = null;
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded');
+            
+            // Инициализация модального окна
+            const modalElement = document.getElementById('formModal');
+            if (modalElement) {
+                modal = new bootstrap.Modal(modalElement);
+                console.log('Modal initialized');
+            } else {
+                console.error('Modal element not found');
+            }
+
+            if (!getToken()) {
+                window.location.href = '/admin/login';
+            } else {
+                loadUsers(); // Загрузка пользователей по умолчанию
+            }
+        });
 
         function getToken() {
             return localStorage.getItem('admin_token');
@@ -105,33 +157,53 @@
                 options.body = JSON.stringify(data);
             }
 
-            const response = await fetch(endpoint, options);
-            if (response.status === 401) {
-                logout();
-                return;
+            try {
+                const response = await fetch(endpoint, options);
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
             }
-            return response.json();
         }
 
         function displayData(data, columns) {
             const container = document.getElementById('data-container');
-            let html = '<table class="table"><thead><tr>';
+            let html = '<table class="table table-striped table-hover"><thead><tr>';
             
             columns.forEach(col => {
-                html += `<th onclick="sortTable('${col}')">${col}</th>`;
+                html += `<th>${col}</th>`;
             });
             
-            html += '<th>Actions</th></tr></thead><tbody>';
+            html += '<th>Действия</th></tr></thead><tbody>';
             
             data.forEach(item => {
                 html += '<tr>';
                 columns.forEach(col => {
-                    html += `<td>${item[col] || ''}</td>`;
+                    if (col === 'name') {
+                        html += `<td class="wallet-name">${item[col] || ''}</td>`;
+                    } else if (['usdt_trc20', 'bch', 'eth', 'btc'].includes(col)) {
+                        html += `<td class="wallet-address">${item[col] || '-'}</td>`;
+                    } else {
+                        html += `<td>${item[col] || ''}</td>`;
+                    }
                 });
                 html += `
                     <td>
-                        <button class="btn btn-sm btn-primary" onclick="showEditForm(${item.id})">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Delete</button>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-primary" onclick="showEditForm(${item.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="deleteItem(${item.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>`;
             });
@@ -141,16 +213,31 @@
         }
 
         function showCreateForm() {
+            console.log('Showing create form...');
+            if (!modal) {
+                console.error('Modal not initialized');
+                return;
+            }
+
             currentId = null;
-            document.getElementById('modalTitle').textContent = 'Create New';
+            currentSection = 'wallets';
+            
+            const modalTitle = document.getElementById('modalTitle');
             const form = document.getElementById('dataForm');
-            form.innerHTML = getFormFields();
-            modal.show();
+            
+            if (modalTitle && form) {
+                modalTitle.textContent = 'Создать кошелек';
+                form.innerHTML = getFormFields();
+                modal.show();
+                console.log('Modal shown');
+            } else {
+                console.error('Modal elements not found');
+            }
         }
 
         function showEditForm(id) {
             currentId = id;
-            document.getElementById('modalTitle').textContent = 'Edit';
+            document.getElementById('modalTitle').textContent = 'Редактировать кошелек';
             const form = document.getElementById('dataForm');
             form.innerHTML = getFormFields();
             
@@ -161,241 +248,57 @@
                         input.value = data[key] || '';
                     }
                 });
+            }).catch(error => {
+                console.error('Error loading data:', error);
+                alert('Ошибка загрузки данных: ' + error.message);
             });
             
             modal.show();
         }
 
-        function getFormFields() {
-            switch (currentSection) {
-                case 'users':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-control" name="password" ${!currentId ? 'required' : ''}>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Full Name</label>
-                            <input type="text" class="form-control" name="full_name">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Is Active</label>
-                            <input type="checkbox" class="form-check-input" name="is_active">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Is Superuser</label>
-                            <input type="checkbox" class="form-check-input" name="is_superuser">
-                        </div>
-                    `;
-                case 'fund-info':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <input type="text" class="form-control" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" name="description" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Address</label>
-                            <input type="text" class="form-control" name="address" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Phone</label>
-                            <input type="text" class="form-control" name="phone" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Is Active</label>
-                            <input type="checkbox" class="form-check-input" name="is_active">
-                        </div>
-                    `;
-                case 'social-links':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Fund ID</label>
-                            <input type="number" class="form-control" name="fund_id" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Platform</label>
-                            <input type="text" class="form-control" name="platform" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">URL</label>
-                            <input type="url" class="form-control" name="url" required>
-                        </div>
-                    `;
-                case 'bank-details':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Fund ID</label>
-                            <input type="number" class="form-control" name="fund_id" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Bank Name</label>
-                            <input type="text" class="form-control" name="bank_name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Account Number</label>
-                            <input type="text" class="form-control" name="account_number" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">SWIFT Code</label>
-                            <input type="text" class="form-control" name="swift_code">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">IBAN</label>
-                            <input type="text" class="form-control" name="iban">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Currency</label>
-                            <input type="text" class="form-control" name="currency" required>
-                        </div>
-                    `;
-                case 'feedback':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <input type="text" class="form-control" name="name" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Message</label>
-                            <textarea class="form-control" name="message" readonly></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Is Read</label>
-                            <input type="checkbox" class="form-check-input" name="is_read">
-                        </div>
-                    `;
-                case 'campaigns':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Title</label>
-                            <input type="text" class="form-control" name="title" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea class="form-control" name="description"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Target Amount</label>
-                            <input type="number" class="form-control" name="target_amount" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Is Active</label>
-                            <input type="checkbox" class="form-check-input" name="is_active">
-                        </div>
-                    `;
-                case 'wallets':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <input type="text" class="form-control" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Campaign ID</label>
-                            <input type="number" class="form-control" name="campaign_id" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">USDT TRC20</label>
-                            <input type="text" class="form-control" name="usdt_trc20">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">BCH</label>
-                            <input type="text" class="form-control" name="bch">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">ETH</label>
-                            <input type="text" class="form-control" name="eth">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">BTC</label>
-                            <input type="text" class="form-control" name="btc">
-                        </div>
-                    `;
-                case 'publications':
-                    return `
-                        <div class="mb-3">
-                            <label class="form-label">Title</label>
-                            <input type="text" class="form-control" name="title" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Slug</label>
-                            <input type="text" class="form-control" name="slug" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Photo</label>
-                            <input type="text" class="form-control" name="photo" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Text</label>
-                            <textarea class="form-control" name="text" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Is Active</label>
-                            <input type="checkbox" class="form-check-input" name="is_active">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Is Fundraising</label>
-                            <input type="checkbox" class="form-check-input" name="is_fundraising">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Source Link</label>
-                            <input type="url" class="form-control" name="source_link">
-                        </div>
-                    `;
-                default:
-                    return '';
+        async function deleteItem(id) {
+            if (!confirm(`Вы уверены, что хотите удалить этот ${currentSection.slice(0, -1)}?`)) return;
+            
+            try {
+                await fetchData(`/admin/${currentSection}/${id}`, 'DELETE');
+                loadCurrentSection();
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                alert(`Ошибка удаления ${currentSection.slice(0, -1)}: ${error.message}`);
             }
         }
 
         async function saveChanges() {
             const form = document.getElementById('dataForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
             const formData = new FormData(form);
             const data = {};
-            
             formData.forEach((value, key) => {
                 if (key === 'is_active' || key === 'is_superuser' || key === 'is_fundraising' || key === 'is_read') {
                     data[key] = value === 'on';
                 } else if (key === 'fund_id' || key === 'campaign_id') {
-                    data[key] = parseInt(value);
+                    data[key] = value ? parseInt(value) : null;
                 } else {
-                    data[key] = value;
+                    data[key] = value || null;
                 }
             });
 
-            const method = currentId ? 'PUT' : 'POST';
-            const endpoint = currentId ? `/admin/${currentSection}/${currentId}` : `/admin/${currentSection}`;
-            
             try {
+                const endpoint = currentId 
+                    ? `/admin/${currentSection}/${currentId}` 
+                    : `/admin/${currentSection}`;
+                const method = currentId ? 'PUT' : 'POST';
+                
                 await fetchData(endpoint, method, data);
                 modal.hide();
                 loadCurrentSection();
             } catch (error) {
-                alert('Error saving changes');
-            }
-        }
-
-        async function deleteItem(id) {
-            if (confirm('Are you sure you want to delete this item?')) {
-                try {
-                    await fetchData(`/admin/${currentSection}/${id}`, 'DELETE');
-                    loadCurrentSection();
-                } catch (error) {
-                    alert('Error deleting item');
-                }
+                console.error('Error saving data:', error);
+                alert(`Ошибка сохранения ${currentSection}: ${error.message}`);
             }
         }
 
@@ -418,9 +321,6 @@
                     break;
                 case 'campaigns':
                     loadCampaigns();
-                    break;
-                case 'wallets':
-                    loadWallets();
                     break;
                 case 'publications':
                     loadPublications();
@@ -470,25 +370,11 @@
             displayData(data, ['id', 'uuid', 'title', 'description', 'is_active']);
         }
 
-        async function loadWallets() {
-            currentSection = 'wallets';
-            document.getElementById('current-section').textContent = 'Wallets';
-            const data = await fetchData('/admin/wallets');
-            displayData(data, ['id', 'uuid', 'name', 'campaign_id', 'usdt_trc20', 'bch', 'eth', 'btc']);
-        }
-
         async function loadPublications() {
             currentSection = 'publications';
             document.getElementById('current-section').textContent = 'Publications';
             const data = await fetchData('/admin/publications');
             displayData(data, ['id', 'title', 'slug', 'photo', 'text', 'is_active', 'is_fundraising', 'views', 'source_link']);
-        }
-
-        // Check authentication on page load
-        if (!getToken()) {
-            window.location.href = '/admin/login';
-        } else {
-            loadUsers(); // Load users by default
         }
     </script>
 </body>

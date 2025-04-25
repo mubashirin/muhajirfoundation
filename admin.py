@@ -84,18 +84,18 @@ class FeedbackUpdate(BaseModel):
 class CampaignCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    target_amount: Decimal = 0
+    wallet_id: Optional[int] = None
     is_active: bool = True
 
 class CampaignUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    target_amount: Optional[Decimal] = None
+    wallet_id: Optional[int] = None
     is_active: Optional[bool] = None
 
 class WalletCreate(BaseModel):
     name: str
-    campaign_id: int
+    campaign_id: Optional[int] = None
     usdt_trc20: Optional[str] = None
     bch: Optional[str] = None
     eth: Optional[str] = None
@@ -146,18 +146,66 @@ async def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = D
     return user
 
 def init_admin_routes(app: FastAPI):
+    @app.get("/admin/api/users")
+    async def get_users_list(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+        users = db.query(User).all()
+        return [
+            {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "is_active": user.is_active,
+                "is_superuser": user.is_superuser,
+                "created_at": user.created_at.isoformat() if user.created_at else None
+            }
+            for user in users
+        ]
+
     @app.get("/admin/", response_class=HTMLResponse)
     async def admin_root(request: Request):
-        return templates.TemplateResponse("admin/index.html", {"request": request})
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header or not auth_header.startswith('Bearer '):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            email = payload.get("sub")
+            if not email:
+                raise HTTPException(status_code=401, detail="Invalid token")
+                
+            db = next(get_db())
+            user = db.query(User).filter(User.email == email).first()
+            if not user or not user.is_superuser:
+                raise HTTPException(status_code=401, detail="Not authorized")
+                
+            return templates.TemplateResponse("admin/admin.html", {"request": request})
+        except Exception as e:
+            raise HTTPException(status_code=401, detail="Invalid token")
 
     @app.get("/admin/login", response_class=HTMLResponse)
     async def admin_login_page(request: Request):
         return templates.TemplateResponse("admin/login.html", {"request": request})
 
     @app.post("/admin/login")
-    async def admin_login(email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    async def admin_login(request: Request, db: Session = Depends(get_db)):
+        form_data = await request.form()
+        email = form_data.get("email")
+        password = form_data.get("password")
+        
+        if not email or not password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email and password are required"
+            )
+            
         user = db.query(User).filter(User.email == email).first()
-        if not user or not user.is_superuser or not verify_password(password, user.hashed_password):
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
@@ -179,8 +227,18 @@ def init_admin_routes(app: FastAPI):
             raise HTTPException(status_code=404, detail="User not found")
         return {"id": user.id, "email": user.email, "full_name": user.full_name, "is_active": user.is_active, "is_superuser": user.is_superuser}
 
-    @app.post("/admin/users", response_model=dict)
-    async def create_user(user_data: UserCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    @app.post("/admin/api/users")
+    async def create_user(
+        user_data: UserCreate,
+        current_admin: User = Depends(get_current_admin),
+        db: Session = Depends(get_db)
+    ):
+        if db.query(User).filter(User.email == user_data.email).first():
+            raise HTTPException(
+                status_code=400,
+                detail="Email already registered"
+            )
+        
         db_user = User(
             email=user_data.email,
             hashed_password=get_password_hash(user_data.password),
@@ -191,7 +249,15 @@ def init_admin_routes(app: FastAPI):
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
-        return {"id": db_user.id, "email": db_user.email, "full_name": db_user.full_name, "is_active": db_user.is_active, "is_superuser": db_user.is_superuser}
+        
+        return {
+            "id": db_user.id,
+            "email": db_user.email,
+            "full_name": db_user.full_name,
+            "is_active": db_user.is_active,
+            "is_superuser": db_user.is_superuser,
+            "created_at": db_user.created_at.isoformat() if db_user.created_at else None
+        }
 
     @app.put("/admin/users/{user_id}", response_model=dict)
     async def update_user(user_id: int, user_data: UserUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
@@ -199,7 +265,8 @@ def init_admin_routes(app: FastAPI):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        for field, value in user_data.dict(exclude_unset=True).items():
+        update_data = user_data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
             setattr(user, field, value)
         
         db.commit()
@@ -403,20 +470,20 @@ def init_admin_routes(app: FastAPI):
         db.add(campaign)
         db.commit()
         db.refresh(campaign)
-        return {"id": campaign.id, "uuid": str(campaign.uuid), "title": campaign.title, "description": campaign.description, "is_active": campaign.is_active}
+        return {"id": campaign.id, "title": campaign.title, "description": campaign.description, "wallet_id": campaign.wallet_id, "is_active": campaign.is_active}
 
     @app.put("/admin/campaigns/{campaign_id}", response_model=dict)
     async def update_campaign(campaign_id: int, campaign_data: CampaignUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         campaign = db.query(DonationCampaign).filter(DonationCampaign.id == campaign_id).first()
         if not campaign:
             raise HTTPException(status_code=404, detail="Campaign not found")
-        
+            
         for field, value in campaign_data.dict(exclude_unset=True).items():
             setattr(campaign, field, value)
-        
+            
         db.commit()
         db.refresh(campaign)
-        return {"id": campaign.id, "uuid": str(campaign.uuid), "title": campaign.title, "description": campaign.description, "is_active": campaign.is_active}
+        return {"id": campaign.id, "title": campaign.title, "description": campaign.description, "wallet_id": campaign.wallet_id, "is_active": campaign.is_active}
 
     @app.delete("/admin/campaigns/{campaign_id}")
     async def delete_campaign(campaign_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):

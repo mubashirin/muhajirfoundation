@@ -11,7 +11,7 @@ class WalletBase(BaseModel):
     btc: Optional[str] = None
 
 class WalletCreate(WalletBase):
-    campaign_id: int
+    campaign_id: Optional[int] = None
 
 class WalletUpdate(WalletBase):
     pass
@@ -28,8 +28,8 @@ class Wallet(WalletBase):
 
 class DonationCampaignBase(BaseModel):
     title: str
-    description: Optional[str] = None
-    target_amount: Decimal = 0
+    description: str | None = None
+    status: str
     is_active: bool = True
 
 class DonationCampaignCreate(DonationCampaignBase):
@@ -42,7 +42,7 @@ class DonationCampaign(DonationCampaignBase):
     id: int
     uuid: UUID4
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime
     wallets: List[Wallet] = []
 
     class Config:
