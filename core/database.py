@@ -1,3 +1,4 @@
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -8,15 +9,16 @@ from core.config import get_settings
 settings = get_settings()
 
 # Синхронное подключение
-engine = create_async_engine(
+sync_engine = create_engine(settings.get_database_url)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
+
+# Асинхронное подключение
+async_engine = create_async_engine(
     settings.get_database_url.replace('postgresql://', 'postgresql+asyncpg://'),
     echo=True,
 )
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Асинхронное подключение
 async_session_maker = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+    async_engine, class_=AsyncSession, expire_on_commit=False
 )
 
 Base = declarative_base()
