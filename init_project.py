@@ -46,7 +46,7 @@ def run_migrations() -> None:
     """Применяет миграции к БД"""
     try:
         alembic_cfg = Config("alembic.ini")
-        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.get_database_url)
         command.upgrade(alembic_cfg, "head")
         typer.echo("Migrations applied successfully!")
     except Exception as e:
