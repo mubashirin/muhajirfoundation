@@ -49,6 +49,6 @@ app.include_router(publications_api_router)
 # Инициализация админ-роутов
 init_admin_routes(app)
 
-@app.get("/")
+@app.get("/api/v1/")
 async def root():
     return {"message": "Welcome to Muhajeer Foundation API", "version": settings.VERSION} 
