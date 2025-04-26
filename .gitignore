@@ -92,3 +92,7 @@ local_settings.py
 
 .env
 db.sqlite3
+
+# Игнорировать содержимое uploads, но оставить саму папку
+uploads/*
+!uploads/.gitkeep
