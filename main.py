@@ -10,6 +10,8 @@ from feedback.routes import router as feedback_router
 from donations.routes import router as donations_router
 from admin import init_admin_routes
 from publications.api import router as publications_api_router
+import yaml
+from fastapi.responses import Response
 
 settings = get_settings()
 
@@ -51,4 +53,10 @@ init_admin_routes(app)
 
 @app.get("/api/v1/")
 async def root():
-    return {"message": "Welcome to Muhajeer Foundation API", "version": settings.VERSION} 
+    return {"message": "Welcome to Muhajeer Foundation API", "version": settings.VERSION}
+
+@app.get("/docs/openapi.yaml", include_in_schema=False)
+def openapi_yaml():
+    openapi_schema = app.openapi()
+    yaml_str = yaml.dump(openapi_schema, allow_unicode=True, sort_keys=False)
+    return Response(content=yaml_str, media_type="application/x-yaml") 

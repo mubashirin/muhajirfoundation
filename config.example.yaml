@@ -1,6 +1,6 @@
 app:
   name: "Muhajir Foundation API"
-  version: "1.0.3"
+  version: "1.0.1"
   debug: false
   api_v1_str: "/api/v1"
   workers: 4
@@ -11,8 +11,8 @@ database:
   host: "localhost"
   port: 5432
   name: "muhajirfoundation"
-  user: "coder"
-  password: "Halil4983301..!"
+  user: "your_db_user"
+  password: "your_db_password"
   pool_size: 5
   max_overflow: 10
   pool_timeout: 30
@@ -20,7 +20,7 @@ database:
   echo: false
 
 security:
-  secret_key: "71c9b85af2b1c45a11d84b1164596617c96af2cba08d2c0df769ed76b2fad72d"
+  secret_key: "your_secret_key"
   algorithm: "HS256"
   access_token_expire_minutes: 30
   refresh_token_expire_days: 7
@@ -83,5 +83,5 @@ cluster:
   nodes: []
   sync_interval: 60
 
-pinata_api_key: "2dcedcc566744c645852"
-pinata_api_secret: "975615dd65a693f8234f92e7baa095e400c5e39fd6961b315c530a488c8267e6"
+pinata_api_key: "your_pinata_api_key"
+pinata_api_secret: "your_pinata_api_secret" 
