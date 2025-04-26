@@ -5,11 +5,13 @@ from datetime import datetime
 class PublicationBase(BaseModel):
     title: str
     slug: str
-    photo: str
+    photo: Optional[str] = None
     text: str
     is_active: bool = True
     is_fundraising: bool = False
     source_link: Optional[str] = None
+    file_path: Optional[str] = None
+    ipfs_link: Optional[str] = None
 
 class PublicationCreate(PublicationBase):
     pass
@@ -22,6 +24,8 @@ class PublicationUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_fundraising: Optional[bool] = None
     source_link: Optional[str] = None
+    file_path: Optional[str] = None
+    ipfs_link: Optional[str] = None
 
 class Publication(PublicationBase):
     id: int

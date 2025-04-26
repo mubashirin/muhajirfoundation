@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"
 
+    # Pinata
+    PINATA_API_KEY: str
+    PINATA_API_SECRET: str
+
     @property
     def get_database_url(self) -> str:
         if self.SQLALCHEMY_DATABASE_URI:
@@ -100,5 +104,8 @@ def get_settings() -> Settings:
         MAIL_PASSWORD=yaml_config["email"]["password"],
         MAIL_FROM=yaml_config["email"]["from"],
         MAIL_PORT=yaml_config["email"]["port"],
-        MAIL_SERVER=yaml_config["email"]["server"]
+        MAIL_SERVER=yaml_config["email"]["server"],
+        
+        PINATA_API_KEY=yaml_config["pinata_api_key"],
+        PINATA_API_SECRET=yaml_config["pinata_api_secret"]
     ) 

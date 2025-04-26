@@ -9,6 +9,7 @@ from fund.routes import router as fund_router
 from feedback.routes import router as feedback_router
 from donations.routes import router as donations_router
 from admin import init_admin_routes
+from publications.api import router as publications_api_router
 
 settings = get_settings()
 
@@ -43,6 +44,7 @@ app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(fund_router, prefix=settings.API_V1_STR)
 app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(donations_router, prefix=settings.API_V1_STR)
+app.include_router(publications_api_router)
 
 # Инициализация админ-роутов
 init_admin_routes(app)

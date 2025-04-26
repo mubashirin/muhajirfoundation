@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -19,6 +19,9 @@ from decimal import Decimal
 from auth.router import router as auth_router
 from feedback import crud
 from feedback.schemas import FeedbackCreate, FeedbackUpdate, FeedbackRead
+import random
+import string
+import requests
 
 settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
@@ -481,39 +484,189 @@ def init_admin_routes(app: FastAPI):
     @app.get("/admin/publications", response_model=List[dict], tags=["admin"])
     async def get_publications(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publications = db.query(Publication).all()
-        return [{"id": pub.id, "title": pub.title, "slug": pub.slug, "photo": pub.photo, "text": pub.text, "is_active": pub.is_active, "is_fundraising": pub.is_fundraising, "source_link": pub.source_link} for pub in publications]
+        return [
+            {
+                "id": pub.id,
+                "title": pub.title,
+                "slug": pub.slug,
+                "photo": pub.photo,
+                "text": pub.text,
+                "is_active": pub.is_active,
+                "is_fundraising": pub.is_fundraising,
+                "source_link": pub.source_link,
+                "file_path": pub.file_path,
+                "ipfs_link": pub.ipfs_link,
+                "views": pub.views,
+                "created_at": pub.created_at,
+                "updated_at": pub.updated_at
+            }
+            for pub in publications
+        ]
 
     @app.get("/admin/publications/{publication_id}", response_model=dict, tags=["admin"])
     async def get_publication(publication_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publication = db.query(Publication).filter(Publication.id == publication_id).first()
         if not publication:
             raise HTTPException(status_code=404, detail="Publication not found")
-        return {"id": publication.id, "title": publication.title, "slug": publication.slug, "photo": publication.photo, "text": publication.text, "is_active": publication.is_active, "is_fundraising": publication.is_fundraising, "source_link": publication.source_link}
+        return {
+            "id": publication.id,
+            "title": publication.title,
+            "slug": publication.slug,
+            "photo": publication.photo,
+            "text": publication.text,
+            "is_active": publication.is_active,
+            "is_fundraising": publication.is_fundraising,
+            "source_link": publication.source_link,
+            "file_path": publication.file_path,
+            "ipfs_link": publication.ipfs_link,
+            "views": publication.views,
+            "created_at": publication.created_at,
+            "updated_at": publication.updated_at,
+            "status_publication": {"ipfs": "ok" if publication.ipfs_link else "fail"}
+        }
+
+    def upload_to_ipfs(filepath: str) -> str | None:
+        import os
+        import requests
+        api_key = settings.PINATA_API_KEY
+        api_secret = settings.PINATA_API_SECRET
+        if not api_key or not api_secret:
+            return None
+        url = "https://api.pinata.cloud/pinning/pinFileToIPFS"
+        headers = {
+            "pinata_api_key": api_key,
+            "pinata_secret_api_key": api_secret
+        }
+        with open(filepath, "rb") as f:
+            files = {'file': (os.path.basename(filepath), f)}
+            response = requests.post(url, files=files, headers=headers)
+            response.raise_for_status()
+            ipfs_hash = response.json()["IpfsHash"]
+            filename = os.path.basename(filepath)
+            ipfs_url = f"https://gateway.pinata.cloud/ipfs/{ipfs_hash}/{filename}"
+            return ipfs_url
 
     @app.post("/admin/publications", response_model=dict, tags=["admin"])
-    async def create_publication(publication_data: PublicationCreate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
-        # Проверяем уникальность slug
-        if db.query(Publication).filter(Publication.slug == publication_data.slug).first():
+    async def create_publication(
+        title: str = Form(...),
+        photo: UploadFile = File(None),
+        text: str = Form(...),
+        is_active: bool = Form(True),
+        is_fundraising: bool = Form(False),
+        current_admin: User = Depends(get_current_admin),
+        db: Session = Depends(get_db)
+    ):
+        def slugify(text):
+            import re
+            text = text.lower()
+            text = re.sub(r'[^a-z0-9]+', '-', text)
+            return text.strip('-')
+        def random_link():
+            import random, string
+            return ''.join(random.choices(string.ascii_letters + string.digits, k=7))
+        slug = slugify(title)
+        source_link = random_link()
+        photo_path = None
+        ipfs_link = None
+        if photo and getattr(photo, 'filename', None):
+            if photo.filename:
+                uploads_dir = "uploads/publications"
+                import os
+                os.makedirs(uploads_dir, exist_ok=True)
+                photo_path = os.path.join(uploads_dir, photo.filename)
+                contents = photo.file.read()
+                with open(photo_path, "wb") as f:
+                    f.write(contents)
+                ipfs_link = upload_to_ipfs(photo_path)
+        if db.query(Publication).filter(Publication.slug == slug).first():
             raise HTTPException(status_code=400, detail="Publication with this slug already exists")
-            
-        publication = Publication(**publication_data.dict())
+        publication = Publication(
+            title=title,
+            slug=slug,
+            photo=photo_path,
+            text=text,
+            is_active=is_active,
+            is_fundraising=is_fundraising,
+            source_link=source_link,
+            ipfs_link=ipfs_link
+        )
         db.add(publication)
         db.commit()
         db.refresh(publication)
-        return {"id": publication.id, "title": publication.title, "slug": publication.slug, "photo": publication.photo, "text": publication.text, "is_active": publication.is_active, "is_fundraising": publication.is_fundraising, "source_link": publication.source_link}
+        return {
+            "id": publication.id,
+            "title": publication.title,
+            "slug": publication.slug,
+            "photo": publication.photo,
+            "text": publication.text,
+            "is_active": publication.is_active,
+            "is_fundraising": publication.is_fundraising,
+            "source_link": publication.source_link,
+            "file_path": publication.file_path,
+            "ipfs_link": publication.ipfs_link,
+            "views": publication.views,
+            "created_at": publication.created_at,
+            "updated_at": publication.updated_at,
+            "status_publication": {"ipfs": "ok" if publication.ipfs_link else "fail"}
+        }
 
     @app.put("/admin/publications/{publication_id}", response_model=dict, tags=["admin"])
-    async def update_publication(publication_id: int, publication_data: PublicationUpdate, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    async def update_publication(
+        publication_id: int,
+        title: str = Form(None),
+        photo: UploadFile = File(None),
+        text: str = Form(None),
+        is_active: bool = Form(None),
+        is_fundraising: bool = Form(None),
+        current_admin: User = Depends(get_current_admin),
+        db: Session = Depends(get_db)
+    ):
+        def slugify(text):
+            import re
+            text = text.lower()
+            text = re.sub(r'[^a-z0-9]+', '-', text)
+            return text.strip('-')
         publication = db.query(Publication).filter(Publication.id == publication_id).first()
         if not publication:
             raise HTTPException(status_code=404, detail="Publication not found")
-        
-        for field, value in publication_data.dict(exclude_unset=True).items():
-            setattr(publication, field, value)
-        
+        if title is not None:
+            publication.title = title
+            publication.slug = slugify(title)
+        if text is not None:
+            publication.text = text
+        if is_active is not None:
+            publication.is_active = is_active
+        if is_fundraising is not None:
+            publication.is_fundraising = is_fundraising
+        if photo and getattr(photo, 'filename', None):
+            if photo.filename:
+                uploads_dir = "uploads/publications"
+                import os
+                os.makedirs(uploads_dir, exist_ok=True)
+                photo_path = os.path.join(uploads_dir, photo.filename)
+                contents = photo.file.read()
+                with open(photo_path, "wb") as f:
+                    f.write(contents)
+                publication.photo = photo_path
+                publication.ipfs_link = upload_to_ipfs(photo_path)
         db.commit()
         db.refresh(publication)
-        return {"id": publication.id, "title": publication.title, "slug": publication.slug, "photo": publication.photo, "text": publication.text, "is_active": publication.is_active, "is_fundraising": publication.is_fundraising, "source_link": publication.source_link}
+        return {
+            "id": publication.id,
+            "title": publication.title,
+            "slug": publication.slug,
+            "photo": publication.photo,
+            "text": publication.text,
+            "is_active": publication.is_active,
+            "is_fundraising": publication.is_fundraising,
+            "source_link": publication.source_link,
+            "file_path": publication.file_path,
+            "ipfs_link": publication.ipfs_link,
+            "views": publication.views,
+            "created_at": publication.created_at,
+            "updated_at": publication.updated_at,
+            "status_publication": {"ipfs": "ok" if publication.ipfs_link else "fail"}
+        }
 
     @app.delete("/admin/publications/{publication_id}", tags=["admin"])
     async def delete_publication(publication_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):

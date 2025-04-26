@@ -82,3 +82,6 @@ cluster:
   enabled: false
   nodes: []
   sync_interval: 60
+
+pinata_api_key: "2dcedcc566744c645852"
+pinata_api_secret: "975615dd65a693f8234f92e7baa095e400c5e39fd6961b315c530a488c8267e6"
