@@ -99,3 +99,6 @@ uploads/*
 
 config.yaml
 !config.example.yaml
+
+# Исключить правила Cursor
+.cursor/rules/

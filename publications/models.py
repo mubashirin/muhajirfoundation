@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, func, ForeignKey
+from sqlalchemy.orm import relationship
 from core.database import Base
 
 class Publication(Base):
@@ -20,3 +21,19 @@ class Publication(Base):
 
     def __str__(self):
         return self.title
+
+class PublicationImage(Base):
+    __tablename__ = "publication_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id", ondelete="CASCADE"), nullable=False)
+    image = Column(String, nullable=False)
+    publication = relationship("Publication", backref="images")
+
+class PublicationVideo(Base):
+    __tablename__ = "publication_videos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id", ondelete="CASCADE"), nullable=False)
+    video = Column(String, nullable=False)
+    publication = relationship("Publication", backref="videos")

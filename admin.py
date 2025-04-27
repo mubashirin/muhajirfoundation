@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from core.database import get_db
 from users.models import User
@@ -8,7 +8,7 @@ from fund.models import FundInfo, SocialLink, BankDetail
 from feedback.models import Feedback
 from feedback import schemas
 from donations.models import DonationCampaign, Wallet
-from publications.models import Publication
+from publications.models import Publication, PublicationImage, PublicationVideo
 from publications.schemas import PublicationCreate, PublicationUpdate
 from core.security import verify_password, create_access_token, get_password_hash
 from datetime import datetime, timedelta
@@ -484,8 +484,11 @@ def init_admin_routes(app: FastAPI):
     @app.get("/admin/publications", response_model=List[dict], tags=["admin"])
     async def get_publications(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publications = db.query(Publication).all()
-        return [
-            {
+        result = []
+        for pub in publications:
+            images = db.query(PublicationImage).filter(PublicationImage.publication_id == pub.id).all()
+            videos = db.query(PublicationVideo).filter(PublicationVideo.publication_id == pub.id).all()
+            result.append({
                 "id": pub.id,
                 "title": pub.title,
                 "slug": pub.slug,
@@ -498,16 +501,19 @@ def init_admin_routes(app: FastAPI):
                 "ipfs_link": pub.ipfs_link,
                 "views": pub.views,
                 "created_at": pub.created_at,
-                "updated_at": pub.updated_at
-            }
-            for pub in publications
-        ]
+                "updated_at": pub.updated_at,
+                "images": [{"id": img.id, "image": img.image} for img in images],
+                "videos": [{"id": vid.id, "video": vid.video} for vid in videos],
+            })
+        return result
 
     @app.get("/admin/publications/{publication_id}", response_model=dict, tags=["admin"])
     async def get_publication(publication_id: int, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
         publication = db.query(Publication).filter(Publication.id == publication_id).first()
         if not publication:
             raise HTTPException(status_code=404, detail="Publication not found")
+        images = db.query(PublicationImage).filter(PublicationImage.publication_id == publication.id).all()
+        videos = db.query(PublicationVideo).filter(PublicationVideo.publication_id == publication.id).all()
         return {
             "id": publication.id,
             "title": publication.title,
@@ -522,6 +528,8 @@ def init_admin_routes(app: FastAPI):
             "views": publication.views,
             "created_at": publication.created_at,
             "updated_at": publication.updated_at,
+            "images": [{"id": img.id, "image": img.image} for img in images],
+            "videos": [{"id": vid.id, "video": vid.video} for vid in videos],
             "status_publication": {"ipfs": "ok" if publication.ipfs_link else "fail"}
         }
 
@@ -675,4 +683,44 @@ def init_admin_routes(app: FastAPI):
             raise HTTPException(status_code=404, detail="Publication not found")
         db.delete(publication)
         db.commit()
-        return {"message": "Publication deleted successfully"} 
+        return {"message": "Publication deleted successfully"}
+
+    @app.post("/admin/publications/{publication_id}/images", tags=["admin"])
+    async def upload_publication_image(
+        publication_id: int,
+        file: UploadFile = File(...),
+        current_admin: User = Depends(get_current_admin),
+        db: Session = Depends(get_db)
+    ):
+        uploads_dir = "uploads/publications"
+        import os
+        os.makedirs(uploads_dir, exist_ok=True)
+        file_path = os.path.join(uploads_dir, file.filename)
+        contents = file.file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        image = PublicationImage(publication_id=publication_id, image=file_path)
+        db.add(image)
+        db.commit()
+        db.refresh(image)
+        return {"id": image.id, "image": image.image, "publication_id": image.publication_id}
+
+    @app.post("/admin/publications/{publication_id}/videos", tags=["admin"])
+    async def upload_publication_video(
+        publication_id: int,
+        file: UploadFile = File(...),
+        current_admin: User = Depends(get_current_admin),
+        db: Session = Depends(get_db)
+    ):
+        uploads_dir = "uploads/publications"
+        import os
+        os.makedirs(uploads_dir, exist_ok=True)
+        file_path = os.path.join(uploads_dir, file.filename)
+        contents = file.file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        video = PublicationVideo(publication_id=publication_id, video=file_path)
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+        return {"id": video.id, "video": video.video, "publication_id": video.publication_id} 

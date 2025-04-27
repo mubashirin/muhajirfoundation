@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class PublicationBase(BaseModel):
@@ -27,11 +27,25 @@ class PublicationUpdate(BaseModel):
     file_path: Optional[str] = None
     ipfs_link: Optional[str] = None
 
+class PublicationImage(BaseModel):
+    id: int
+    image: str
+    class Config:
+        from_attributes = True
+
+class PublicationVideo(BaseModel):
+    id: int
+    video: str
+    class Config:
+        from_attributes = True
+
 class Publication(PublicationBase):
     id: int
     views: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    images: List[PublicationImage] = []
+    videos: List[PublicationVideo] = []
 
     class Config:
         from_attributes = True 
