@@ -10,6 +10,8 @@ from feedback.routes import router as feedback_router
 from donations.routes import router as donations_router
 from admin import init_admin_routes
 from publications.api import router as publications_api_router
+from tgusers.routes import router as tg_router
+from api.v1.endpoints.api_key import router as api_key_router
 import yaml
 from fastapi.responses import Response
 
@@ -47,6 +49,8 @@ app.include_router(fund_router, prefix=settings.API_V1_STR)
 app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(donations_router, prefix=settings.API_V1_STR)
 app.include_router(publications_api_router)
+app.include_router(tg_router)
+app.include_router(api_key_router, prefix="{0}".format(settings.API_V1_STR))
 
 # Инициализация админ-роутов
 init_admin_routes(app)
