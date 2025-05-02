@@ -8,7 +8,6 @@ def create_donation_campaign(db: Session, campaign: schemas.DonationCampaignCrea
     db_campaign = models.DonationCampaign(
         title=campaign.title,
         description=campaign.description,
-        target_amount=campaign.target_amount,
         wallet_id=campaign.wallet_id,
         is_active=campaign.is_active
     )
@@ -110,7 +109,6 @@ def create_campaign(db: Session, campaign: schemas.DonationCampaignCreate) -> mo
     db_campaign = models.DonationCampaign(
         title=campaign.title,
         description=campaign.description,
-        target_amount=campaign.target_amount,
         wallet_id=campaign.wallet_id,
         is_active=campaign.is_active
     )

@@ -28,8 +28,7 @@ class Wallet(WalletBase):
 class DonationCampaignBase(BaseModel):
     title: str
     description: Optional[str] = None
-    goal: float
-    current: float = 0
+    wallet_id: Optional[int] = None
     is_active: bool = True
 
 class DonationCampaignCreate(DonationCampaignBase):

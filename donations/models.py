@@ -13,7 +13,6 @@ class DonationCampaign(Base):
     uuid = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     title = Column(String, nullable=False)
     description = Column(String)
-    target_amount = Column(Numeric(10, 2), nullable=False)
     wallet_id = Column(Integer, ForeignKey("wallets.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
