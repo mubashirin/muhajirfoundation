@@ -48,4 +48,12 @@ class Publication(PublicationBase):
     videos: List[PublicationVideo] = []
 
     class Config:
+        from_attributes = True
+
+class PublicationResponse(PublicationBase):
+    id: int
+    images: Optional[List[str]] = []
+    videos: Optional[List[str]] = []
+
+    class Config:
         from_attributes = True 

@@ -1,10 +1,13 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from typing import Optional
 
 
 class UserBase(BaseModel):
     email: EmailStr
-    full_name: str | None = None
+    full_name: Optional[str] = None
+    is_active: bool = True
+    is_superuser: bool = False
 
 
 class UserCreate(UserBase):
@@ -12,8 +15,14 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(UserBase):
-    password: str | None = None
-    is_active: bool | None = None
+    password: Optional[str] = None
+
+
+class UserResponse(UserBase):
+    id: int
+
+    class Config:
+        from_attributes = True
 
 
 class UserInDBBase(UserBase):

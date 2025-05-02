@@ -27,9 +27,9 @@ class Wallet(WalletBase):
 
 class DonationCampaignBase(BaseModel):
     title: str
-    description: str | None = None
-    target_amount: Decimal
-    wallet_id: int
+    description: Optional[str] = None
+    goal: float
+    current: float = 0
     is_active: bool = True
 
 class DonationCampaignCreate(DonationCampaignBase):
@@ -38,12 +38,21 @@ class DonationCampaignCreate(DonationCampaignBase):
 class DonationCampaignUpdate(DonationCampaignBase):
     pass
 
+class DonationCampaignResponse(DonationCampaignBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class WalletResponse(WalletBase):
+    id: int
+    class Config:
+        from_attributes = True
+
 class DonationCampaign(DonationCampaignBase):
     id: int
     uuid: UUID4
     created_at: datetime
-    updated_at: datetime
-    wallet: Optional[Wallet] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True 

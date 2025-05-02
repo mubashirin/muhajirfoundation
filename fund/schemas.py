@@ -39,20 +39,26 @@ class BankDetail(BankDetailBase):
 
 class FundInfoBase(BaseModel):
     name: str
-    description: str
-    address: str
-    phone: str
-    email: EmailStr
+    description: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    is_active: bool = True
 
 class FundInfoCreate(FundInfoBase):
     pass
 
 class FundInfoUpdate(FundInfoBase):
-    is_active: Optional[bool] = None
+    pass
+
+class FundInfoResponse(FundInfoBase):
+    id: int
+
+    class Config:
+        from_attributes = True
 
 class FundInfo(FundInfoBase):
     id: int
-    is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
     social_links: List[SocialLink] = []
