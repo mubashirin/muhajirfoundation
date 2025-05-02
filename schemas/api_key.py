@@ -31,6 +31,7 @@ class APIKeyInDB(APIKeyBase):
 class APIKeyResponse(APIKeyBase):
     id: int
     api_key: str
+    api_secret: str
     created_at: datetime
     updated_at: Optional[datetime] = None
 

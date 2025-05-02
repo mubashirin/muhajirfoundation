@@ -14,6 +14,7 @@ class TgUserUpdate(BaseModel):
 
 class TgUserOut(TgUserBase):
     id: int
+    name: str
     uuid_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None

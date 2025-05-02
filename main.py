@@ -50,7 +50,7 @@ app.include_router(feedback_router, prefix=settings.API_V1_STR)
 app.include_router(donations_router, prefix=settings.API_V1_STR)
 app.include_router(publications_api_router)
 app.include_router(tg_router)
-app.include_router(api_key_router, prefix="{0}".format(settings.API_V1_STR))
+app.include_router(api_key_router)
 
 # Инициализация админ-роутов
 init_admin_routes(app)
@@ -63,4 +63,4 @@ async def root():
 def openapi_yaml():
     openapi_schema = app.openapi()
     yaml_str = yaml.dump(openapi_schema, allow_unicode=True, sort_keys=False)
-    return Response(content=yaml_str, media_type="application/x-yaml") 
+    return Response(content=yaml_str, media_type="application/x-yaml")

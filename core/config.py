@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "API для Muhajir Foundation"
     DEBUG: bool
     API_V1_STR: str = "/api/v1"
-    
+    API_DOCS_STR: str = "/docs"
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key")
     ALGORITHM: str = "HS256"

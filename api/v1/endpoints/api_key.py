@@ -13,7 +13,7 @@ from crud.api_key import (
 from schemas.api_key import APIKeyCreate, APIKeyUpdate, APIKeyResponse
 from admin.deps import get_current_admin
 
-router = APIRouter(prefix="/admin/api-keys", tags=["admin-api-keys"])
+router = APIRouter(prefix="/admin/api-keys", tags=["admin"])
 
 
 @router.post("/", response_model=APIKeyResponse)
